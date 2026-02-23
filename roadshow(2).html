@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoadShow — Concerts On Your Route</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<style>
+:root {
+  --bg:#0a0a0a; --bg2:#111; --bg3:#1a1a1a; --panel:#121212; --border:#222;
+  --accent:#e8c547; --accent2:#ff5c38; --text:#f0ede6;
+  --text2:#888; --text3:#555; --green:#4ade80; --r:4px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden;}
+
+/* ─── Grain ─── */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.3;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");}
+
+/* ─── Header ─── */
+header{padding:12px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+  justify-content:space-between;position:sticky;top:0;z-index:100;
+  background:rgba(10,10,10,.97);backdrop-filter:blur(14px);}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.9rem;letter-spacing:.14em;color:var(--accent);
+  text-shadow:0 0 50px rgba(232,197,71,.2);}
+.logo span{color:var(--accent2);}
+.htagline{font-size:.52rem;color:var(--text3);letter-spacing:.16em;text-transform:uppercase;margin-top:1px;}
+.pills{display:flex;gap:5px;}
+.pill{font-size:.48rem;padding:3px 7px;border-radius:2px;letter-spacing:.08em;text-transform:uppercase;border:1px solid;transition:all .25s;white-space:nowrap;}
+.p-tm{color:#60a5fa;border-color:rgba(96,165,250,.35);background:rgba(96,165,250,.07);}
+.p-jb{color:var(--green);border-color:rgba(74,222,128,.35);background:rgba(74,222,128,.07);}
+.p-eb{color:#f97316;border-color:rgba(249,115,22,.35);background:rgba(249,115,22,.07);}
+.p-sp{color:#a78bfa;border-color:rgba(167,139,250,.35);background:rgba(167,139,250,.07);}
+.p-dz{color:#ff6b9d;border-color:rgba(255,107,157,.35);background:rgba(255,107,157,.07);}
+.p-off{color:var(--text3);border-color:var(--border);background:transparent;opacity:.38;}
+
+/* ─── 3-Column Layout ─── */
+.app{display:grid;grid-template-columns:320px 340px 1fr;height:calc(100vh - 53px);}
+
+/* ─── Left: Controls ─── */
+.sidebar{background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
+.sidebar::-webkit-scrollbar{width:3px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+.ss{padding:14px 18px;border-bottom:1px solid var(--border);}
+.sl{font-size:.5rem;letter-spacing:.22em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;}
+.sl::after{content:'';flex:1;height:1px;background:var(--border);}
+.ig{margin-bottom:9px;}
+.il{font-size:.56rem;color:var(--text2);margin-bottom:4px;display:flex;align-items:center;gap:5px;}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.ds{background:var(--green);box-shadow:0 0 5px rgba(74,222,128,.4);}
+.de{background:var(--accent2);box-shadow:0 0 5px rgba(255,92,56,.4);}
+.dm{background:var(--accent);box-shadow:0 0 5px rgba(232,197,71,.3);}
+
+input[type=text],input[type=date]{width:100%;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);padding:8px 11px;font-family:'DM Mono',monospace;font-size:.7rem;
+  border-radius:var(--r);outline:none;transition:border-color .25s, box-shadow .25s;}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(232,197,71,.08);}
+input::placeholder{color:var(--text3);}
+input[type=date]{cursor:pointer;}
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:pointer;}
+
+/* Calendar */
+.cal-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:2px;}
+.cal-group{position:relative;}
+.cal-label{font-family:'Bebas Neue',sans-serif;font-size:.68rem;letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:5px;}
+.cal-label.start{color:var(--green);}
+.cal-label.end{color:var(--accent2);}
+.cal-label .cal-icon{font-size:.72rem;}
+.cal-group input[type=date]{font-size:.66rem;padding:8px 10px;}
+.cal-group.start input:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(74,222,128,.1);}
+.cal-group.end input:focus{border-color:var(--accent2);box-shadow:0 0 0 2px rgba(255,92,56,.1);}
+.trip-meta{display:flex;justify-content:space-between;align-items:center;padding:4px 2px;margin-bottom:2px;}
+.trip-days{font-size:.55rem;color:var(--accent);letter-spacing:.06em;}
+.trip-days span{color:var(--text3);}
+
+/* Sliders */
+.sw{display:flex;align-items:center;gap:8px;}
+input[type=range]{-webkit-appearance:none;flex:1;height:2px;background:var(--border);outline:none;border:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+  background:var(--accent);cursor:pointer;box-shadow:0 0 8px rgba(232,197,71,.3);}
+input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5);}
+.sv{font-size:.64rem;color:var(--accent);min-width:50px;text-align:right;font-weight:500;}
+
+/* API list */
+.api-list{display:flex;flex-direction:column;gap:5px;}
+.api-row{display:flex;align-items:center;gap:7px;padding:7px 10px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:var(--r);transition:all .25s;}
+.api-row:hover{border-color:var(--text3);}
+.api-row.on{border-color:rgba(74,222,128,.4);}
+.api-row.dim{opacity:.35;}
+.api-ico{font-size:.78rem;width:16px;text-align:center;flex-shrink:0;}
+.api-info{flex:1;min-width:0;}
+.api-name{font-size:.6rem;color:var(--text);}
+.api-note{font-size:.5rem;color:var(--text3);margin-top:1px;}
+.api-row.on .api-note{color:var(--green);}
+.api-btn{font-family:'DM Mono',monospace;font-size:.52rem;padding:3px 8px;border-radius:var(--r);
+  cursor:pointer;letter-spacing:.05em;border:1px solid var(--border);background:transparent;
+  color:var(--text2);transition:all .18s;white-space:nowrap;}
+.api-btn:hover{border-color:var(--accent);color:var(--accent);}
+.api-row.on .api-btn{border-color:rgba(74,222,128,.3);color:var(--green);}
+.api-divider{font-size:.44rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);
+  padding:3px 0;text-align:center;opacity:.5;}
+
+/* Search button */
+.search-btn{width:100%;padding:12px;background:var(--accent);color:#0a0a0a;border:none;
+  font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.16em;cursor:pointer;
+  border-radius:var(--r);transition:all .2s;position:relative;overflow:hidden;}
+.search-btn:hover{background:#f0d060;transform:translateY(-1px);box-shadow:0 4px 20px rgba(232,197,71,.2);}
+.search-btn:active{transform:translateY(0);}
+.search-btn:disabled{background:var(--bg3);color:var(--text3);cursor:not-allowed;transform:none;box-shadow:none;}
+
+/* ─── Middle: Results Panel ─── */
+.results-panel{background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.results-header{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;}
+.rh{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;}
+.rc{font-size:.56rem;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;}
+.rctrl{display:flex;gap:4px;align-items:center;}
+.fb{font-family:'DM Mono',monospace;font-size:.5rem;padding:2px 7px;border-radius:2px;cursor:pointer;
+  letter-spacing:.05em;border:1px solid var(--border);background:transparent;color:var(--text3);transition:all .18s;}
+.fb:hover{opacity:.8;}
+.fb.f-tm{border-color:#60a5fa;color:#60a5fa;background:rgba(96,165,250,.08);}
+.fb.f-jb{border-color:var(--green);color:var(--green);background:rgba(74,222,128,.08);}
+.fb.f-eb{border-color:#f97316;color:#f97316;background:rgba(249,115,22,.08);}
+.sort-sel{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  font-family:'DM Mono',monospace;font-size:.54rem;padding:2px 7px;border-radius:var(--r);outline:none;cursor:pointer;}
+
+/* Cache indicator */
+.cache-bar{display:flex;align-items:center;gap:6px;padding:6px 16px;border-bottom:1px solid var(--border);
+  background:rgba(232,197,71,.04);flex-shrink:0;}
+.cache-bar.hidden{display:none;}
+.cache-dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;
+  box-shadow:0 0 5px rgba(74,222,128,.5);}
+.cache-text{font-size:.5rem;color:var(--text3);letter-spacing:.04em;}
+.cache-text strong{color:var(--accent);font-weight:400;}
+.cache-clear{font-family:'DM Mono',monospace;font-size:.48rem;padding:2px 6px;border-radius:2px;cursor:pointer;
+  border:1px solid var(--border);background:transparent;color:var(--text3);transition:all .15s;margin-left:auto;}
+.cache-clear:hover{border-color:var(--accent2);color:var(--accent2);}
+
+/* Results list */
+.results-scroll{flex:1;overflow-y:auto;padding:10px 12px;}
+.results-scroll::-webkit-scrollbar{width:3px;}
+.results-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+.cc{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);
+  padding:11px 13px;margin-bottom:6px;cursor:pointer;transition:all .2s;
+  position:relative;overflow:hidden;animation:fadeIn .3s ease both;}
+.cc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;opacity:0;transition:opacity .2s;}
+.cc.s-tm::before{background:#60a5fa;} .cc.s-jb::before{background:var(--green);}
+.cc.s-eb::before{background:#f97316;} .cc.s-demo::before{background:var(--accent);}
+.cc:hover{transform:translateX(3px);border-color:var(--text3);}
+.cc:hover::before{opacity:1;}
+.cc.s-tm:hover{border-color:rgba(96,165,250,.4);}
+.cc.s-jb:hover{border-color:rgba(74,222,128,.4);}
+.cc.s-eb:hover{border-color:rgba(249,115,22,.4);}
+.ct{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;}
+.an{font-family:'Playfair Display',serif;font-size:.82rem;color:var(--text);font-weight:700;
+  flex:1;padding-right:6px;line-height:1.25;}
+.cd{font-size:.5rem;color:var(--accent);letter-spacing:.06em;text-align:right;white-space:nowrap;line-height:1.6;}
+.vn{font-size:.6rem;color:var(--text2);margin-bottom:5px;}
+.ctags{display:flex;gap:4px;flex-wrap:wrap;}
+.tag{font-size:.46rem;padding:2px 5px;border-radius:2px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;}
+.t-city{color:#b8a040;border-color:rgba(232,197,71,.18);background:rgba(232,197,71,.07);}
+.t-tm{color:#60a5fa;border-color:rgba(96,165,250,.22);background:rgba(96,165,250,.07);}
+.t-jb{color:var(--green);border-color:rgba(74,222,128,.22);background:rgba(74,222,128,.07);}
+.t-eb{color:#f97316;border-color:rgba(249,115,22,.22);background:rgba(249,115,22,.07);}
+.t-demo{color:var(--accent);border-color:rgba(232,197,71,.22);background:rgba(232,197,71,.07);}
+.t-gen{color:var(--text3);border-color:var(--border);background:transparent;}
+.ca{display:flex;gap:5px;margin-top:7px;padding-top:7px;border-top:1px solid var(--border);}
+.bs{font-family:'DM Mono',monospace;font-size:.52rem;padding:3px 8px;border-radius:var(--r);
+  cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:all .16s;
+  text-decoration:none;display:inline-flex;align-items:center;gap:3px;border:1px solid;}
+.b-tk{background:var(--accent2);color:white;border-color:var(--accent2);}
+.b-tk:hover{background:#ff7055;box-shadow:0 2px 10px rgba(255,92,56,.25);}
+.b-gh{background:transparent;color:var(--text2);border-color:var(--border);}
+.b-gh:hover{border-color:var(--text2);color:var(--text);}
+
+.demo-note{background:rgba(232,197,71,.06);border:1px solid rgba(232,197,71,.15);
+  border-radius:var(--r);padding:8px 10px;margin-bottom:8px;font-size:.52rem;color:var(--accent);line-height:1.7;}
+
+/* Empty states */
+.empty{text-align:center;padding:40px 16px;color:var(--text3);}
+.empty .ei{font-size:2.4rem;margin-bottom:12px;opacity:.2;}
+.empty p{font-size:.62rem;line-height:1.9;}
+
+/* ─── Right: Map ─── */
+.map-panel{position:relative;display:flex;flex-direction:column;}
+#map{flex:1;background:#0d1117;min-height:200px;}
+.map-ov{position:absolute;top:14px;right:14px;background:rgba(10,10,10,.94);
+  border:1px solid var(--border);border-radius:var(--r);padding:11px 15px;
+  font-size:.56rem;color:var(--text2);backdrop-filter:blur(10px);z-index:500;min-width:165px;display:none;}
+.ms{display:flex;justify-content:space-between;gap:16px;margin-bottom:4px;}
+.ms:last-child{margin-bottom:0;}
+.msv{color:var(--accent);font-weight:500;}
+.src-bk{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+.sk{display:flex;justify-content:space-between;margin-bottom:3px;font-size:.54rem;}
+.lb{height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));
+  width:0%;transition:width .4s ease;position:absolute;top:0;left:0;right:0;z-index:600;}
+
+/* ─── Modal ─── */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;
+  display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .22s;}
+.mo.open{opacity:1;pointer-events:all;}
+.md{background:var(--panel);border:1px solid var(--border);border-radius:6px;
+  padding:24px;max-width:400px;width:90%;transform:translateY(10px);transition:transform .22s;}
+.mo.open .md{transform:translateY(0);}
+.md h3{font-family:'Bebas Neue',sans-serif;font-size:1.25rem;letter-spacing:.1em;color:var(--accent);margin-bottom:8px;}
+.md p{font-size:.64rem;color:var(--text2);line-height:1.75;margin-bottom:12px;}
+.md input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:9px 13px;font-family:'DM Mono',monospace;font-size:.72rem;border-radius:var(--r);
+  outline:none;margin-bottom:12px;}
+.md input:focus{border-color:var(--accent);}
+.ma{display:flex;gap:8px;justify-content:flex-end;}
+.b-cancel{background:transparent;border:1px solid var(--border);color:var(--text2);padding:7px 14px;
+  font-family:'DM Mono',monospace;font-size:.62rem;border-radius:var(--r);cursor:pointer;transition:all .15s;}
+.b-cancel:hover{border-color:var(--text2);}
+.b-save{background:var(--accent);border:none;color:#0a0a0a;padding:7px 14px;
+  font-family:'DM Mono',monospace;font-size:.62rem;border-radius:var(--r);cursor:pointer;font-weight:500;transition:all .15s;}
+.b-save:hover{background:#f0d060;}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Road<span>Show</span></div>
+    <div class="htagline">Concerts along your route</div>
+  </div>
+  <div class="pills">
+    <span class="pill p-tm p-off" id="hdr-tm">Ticketmaster</span>
+    <span class="pill p-jb p-off" id="hdr-jb">Jambase</span>
+    <span class="pill p-eb p-off" id="hdr-eb">Eventbrite</span>
+    <span class="pill p-sp p-off" id="hdr-sp">Spotify</span>
+    <span class="pill p-dz p-off" id="hdr-dz">Deezer</span>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ═══ LEFT: Controls ═══ -->
+  <div class="sidebar">
+    <div class="ss">
+      <div class="sl">Your Route</div>
+      <div class="ig"><div class="il"><span class="dot ds"></span> Starting City</div>
+        <input type="text" id="startCity" placeholder="e.g. Nashville, TN"/></div>
+      <div class="ig"><div class="il"><span class="dot de"></span> Destination</div>
+        <input type="text" id="endCity" placeholder="e.g. New Orleans, LA"/></div>
+      <div class="ig"><div class="il"><span class="dot dm"></span> Stops (comma-separated)</div>
+        <input type="text" id="stopCities" placeholder="e.g. Memphis, TN, Baton Rouge, LA"/></div>
+    </div>
+
+    <div class="ss">
+      <div class="sl">Trip Calendar</div>
+      <div class="cal-row">
+        <div class="cal-group start">
+          <div class="cal-label start"><span class="cal-icon">🟢</span> Start Driving</div>
+          <input type="date" id="dateStart"/>
+        </div>
+        <div class="cal-group end">
+          <div class="cal-label end"><span class="cal-icon">🔴</span> End Trip</div>
+          <input type="date" id="dateEnd"/>
+        </div>
+      </div>
+      <div class="trip-meta"><div class="trip-days" id="tripDays"><span>Select dates</span></div></div>
+      <div class="ig">
+        <div class="il">Search radius</div>
+        <div class="sw"><input type="range" id="radiusSlider" min="10" max="150" value="50"/><span class="sv" id="radiusVal">50 mi</span></div>
+      </div>
+      <div class="ig">
+        <div class="il">Date buffer (± days)</div>
+        <div class="sw"><input type="range" id="bufferSlider" min="0" max="7" value="2"/><span class="sv" id="bufferVal">±2 days</span></div>
+      </div>
+    </div>
+
+    <div class="ss">
+      <div class="sl">Concert Sources</div>
+      <div class="api-list">
+        <div class="api-row" id="row-tm">
+          <div class="api-ico">🎟</div>
+          <div class="api-info"><div class="api-name">Ticketmaster</div><div class="api-note" id="note-tm">Major shows · not connected</div></div>
+          <button class="api-btn" onclick="openModal('tm')">Connect</button>
+        </div>
+        <div class="api-row" id="row-jb">
+          <div class="api-ico">🎸</div>
+          <div class="api-info"><div class="api-name">Jambase</div><div class="api-note" id="note-jb">Indie venues · not connected</div></div>
+          <button class="api-btn" onclick="openModal('jb')">Connect</button>
+        </div>
+        <div class="api-row" id="row-eb">
+          <div class="api-ico">🎪</div>
+          <div class="api-info"><div class="api-name">Eventbrite</div><div class="api-note" id="note-eb">DIY shows · not connected</div></div>
+          <button class="api-btn" onclick="openModal('eb')">Connect</button>
+        </div>
+        <div class="api-divider">── music services ──</div>
+        <div class="api-row dim" id="row-sp">
+          <div class="api-ico">🎵</div>
+          <div class="api-info"><div class="api-name">Spotify</div><div class="api-note" id="note-sp">Match top artists · not connected</div></div>
+          <button class="api-btn" onclick="openModal('sp')">Connect</button>
+        </div>
+        <div class="api-row dim" id="row-dz">
+          <div class="api-ico">🎧</div>
+          <div class="api-info"><div class="api-name">Deezer</div><div class="api-note" id="note-dz">Import favorites · not connected</div></div>
+          <button class="api-btn" onclick="openModal('dz')">Connect</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ss" style="border-bottom:none;">
+      <button class="search-btn" id="searchBtn" onclick="searchConcerts()">⟶ Find Shows</button>
+    </div>
+  </div>
+
+  <!-- ═══ MIDDLE: Results ═══ -->
+  <div class="results-panel">
+    <div class="results-header" id="resultsHeader">
+      <div class="rh">
+        <div class="rc" id="rcLabel">No results yet</div>
+        <div class="rctrl" id="rctrlBar" style="display:none;">
+          <button class="fb f-tm" id="flt-tm" onclick="toggleFilter('tm')">TM</button>
+          <button class="fb f-jb" id="flt-jb" onclick="toggleFilter('jb')">JB</button>
+          <button class="fb f-eb" id="flt-eb" onclick="toggleFilter('eb')">EB</button>
+          <select class="sort-sel" onchange="sortBy(this.value)">
+            <option value="date">Date</option>
+            <option value="artist">Artist</option>
+            <option value="source">Source</option>
+            <option value="city">City</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="cache-bar hidden" id="cacheBar">
+      <div class="cache-dot"></div>
+      <div class="cache-text" id="cacheText">Cached</div>
+      <button class="cache-clear" onclick="clearCache()">Clear Cache</button>
+    </div>
+    <div class="results-scroll" id="resultsScroll">
+      <div class="empty">
+        <div class="ei">🎸</div>
+        <p>Enter your route and trip dates,<br>then hit <strong style="color:var(--accent)">Find Shows</strong>.<br><br>
+        Connect API keys for real data<br>or run demo mode without keys.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ RIGHT: Map ═══ -->
+  <div class="map-panel">
+    <div class="lb" id="lb"></div>
+    <div id="map"></div>
+    <div class="map-ov" id="mapOv">
+      <div class="ms"><span>Shows found</span><span class="msv" id="stShows">0</span></div>
+      <div class="ms"><span>Visible</span><span class="msv" id="stVisible">0</span></div>
+      <div class="ms"><span>Route</span><span class="msv" id="stDist">—</span></div>
+      <div class="ms"><span>Trip</span><span class="msv" id="stTrip">—</span></div>
+      <div class="src-bk" id="srcBk"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal -->
+<div class="mo" id="modalEl" onclick="closeModalOutside(event)">
+  <div class="md">
+    <h3 id="mTitle">Connect</h3>
+    <p id="mDesc"></p>
+    <input type="text" id="mInput" placeholder=""/>
+    <div class="ma">
+      <button class="b-cancel" onclick="closeModal()">Cancel</button>
+      <button class="b-save" onclick="saveKey()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Leaflet check ─────────────────────────────────────────────────
+if (typeof L === 'undefined') {
+  document.getElementById('map').innerHTML =
+    '<div style="padding:40px;color:#888;font-family:monospace;font-size:.8rem">⚠ Map library failed to load. Check your connection and reload.</div>';
+}
+
+// ── Constants ──────────────────────────────────────────────────────
+const MCFG = {
+  tm:{ title:'Ticketmaster API Key', placeholder:'Consumer Key', link:'https://developer.ticketmaster.com/products-and-docs/apis/getting-started/',
+       desc:'Sign up free at developer.ticketmaster.com — instant key, no approval needed. Covers major venues, arenas, and festivals across North America.' },
+  jb:{ title:'Jambase API Key', placeholder:'Jambase API Key', link:'https://www.jambase.com/article/jambase-api',
+       desc:'Apply at jambase.com/api — usually approved within a day. Best source for indie artists, small clubs, and regional venues.' },
+  eb:{ title:'Eventbrite Private Token', placeholder:'Private Token', link:'https://www.eventbrite.com/platform/api',
+       desc:'Get a free token at eventbrite.com/platform — instant. Great for DIY shows and self-promoted gigs.' },
+  sp:{ title:'Spotify Client ID', placeholder:'Client ID', link:'https://developer.spotify.com/dashboard',
+       desc:'Create a free app at developer.spotify.com. Used to match your top artists to shows along your route.' },
+  dz:{ title:'Deezer App ID', placeholder:'App ID', link:'https://developers.deezer.com/myapps',
+       desc:'Register a free app at developers.deezer.com. Imports your favorite artists and playlists to match with shows.' }
+};
+
+const SRC_COLORS = { tm:'#60a5fa', jb:'#4ade80', eb:'#f97316' };
+const SRC_LABELS = { tm:'Ticketmaster', jb:'Jambase', eb:'Eventbrite' };
+
+// ── State ──────────────────────────────────────────────────────────
+const state = {
+  keys:{}, concerts:[], markers:[], route:null, cityMarkers:[],
+  modal:null, filters:new Set(['tm','jb','eb','demo']),
+  lastDiffDays: 0
+};
+
+// ══════════════════════════════════════════════════════════════════
+// ── CACHE SYSTEM ─────────────────────────────────────────────────
+// Keyed by route + radius + connected sources.
+// When the user narrows dates or changes the buffer slider,
+// we filter the already-fetched data client-side instead of
+// hitting the APIs again. A fresh fetch only happens when the
+// route/radius/sources change or the requested date range
+// exceeds what we already have cached.
+// ══════════════════════════════════════════════════════════════════
+const cache = {
+  key: null,           // fingerprint of route + radius + keys
+  dateFrom: null,      // widest date range we fetched
+  dateTo: null,
+  allConcerts: [],     // full unfiltered result set
+  hits: 0,
+  routeGeo: null,      // cached route + city markers so we don't re-geocode
+  geoPoints: null,
+  names: null
+};
+
+function cacheKey(names, radius, keys) {
+  return JSON.stringify({ n:names.map(s=>s.toLowerCase().trim()), r:radius, tm:!!keys.tm, jb:!!keys.jb, eb:!!keys.eb });
+}
+
+function cacheDateCovers(df, dt) {
+  if (!cache.dateFrom || !cache.dateTo) return false;
+  return df >= cache.dateFrom && dt <= cache.dateTo;
+}
+
+function filterByDate(concerts, df, dt) {
+  return concerts.filter(c => {
+    if (!c.datetime) return true;
+    const d = c.datetime.slice(0,10);
+    return d >= df && d <= dt;
+  });
+}
+
+function updateCacheUI() {
+  const bar = document.getElementById('cacheBar');
+  if (cache.allConcerts.length > 0) {
+    bar.classList.remove('hidden');
+    document.getElementById('cacheText').innerHTML =
+      `<strong>${cache.allConcerts.length}</strong> cached · ${cache.dateFrom} → ${cache.dateTo} · <strong>${cache.hits}</strong> hit${cache.hits!==1?'s':''}`;
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+function clearCache() {
+  cache.key = null; cache.dateFrom = null; cache.dateTo = null;
+  cache.allConcerts = []; cache.hits = 0;
+  cache.routeGeo = null; cache.geoPoints = null; cache.names = null;
+  updateCacheUI();
+  console.log('🗑 Cache cleared');
+}
+
+// ── Map ────────────────────────────────────────────────────────────
+const map = L.map('map', { zoomControl:false }).setView([37.5, -93.5], 5);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution:'© OpenStreetMap © Carto', maxZoom:19
+}).addTo(map);
+L.control.zoom({ position:'bottomright' }).addTo(map);
+
+// ── DOM init ──────────────────────────────────────────────────────
+document.getElementById('radiusSlider').oninput = e =>
+  document.getElementById('radiusVal').textContent = e.target.value + ' mi';
+document.getElementById('bufferSlider').oninput = e =>
+  document.getElementById('bufferVal').textContent = '±' + e.target.value + ' days';
+
+const today = new Date();
+const d1 = new Date(today); d1.setDate(today.getDate()+14);
+const d2 = new Date(today); d2.setDate(today.getDate()+21);
+document.getElementById('dateStart').value = fd(d1);
+document.getElementById('dateEnd').value   = fd(d2);
+updateTripDays();
+
+document.getElementById('dateStart').addEventListener('change', updateTripDays);
+document.getElementById('dateEnd').addEventListener('change', updateTripDays);
+
+function updateTripDays() {
+  const ds = document.getElementById('dateStart').value;
+  const de = document.getElementById('dateEnd').value;
+  const el = document.getElementById('tripDays');
+  if (ds && de) {
+    const diff = Math.ceil((new Date(de) - new Date(ds)) / 86400000);
+    if (diff > 0)      el.innerHTML = `${diff} day${diff!==1?'s':''} on the road`;
+    else if (diff===0) el.innerHTML = 'Same-day trip';
+    else               el.innerHTML = '<span style="color:var(--accent2)">End date must be after start</span>';
+  } else {
+    el.innerHTML = '<span>Select dates</span>';
+  }
+}
+
+document.querySelectorAll('input[type=text],input[type=date]')
+  .forEach(el => el.addEventListener('keydown', e => { if(e.key==='Enter') searchConcerts(); }));
+
+// ── Utilities ──────────────────────────────────────────────────────
+function fd(d) { return d.toISOString().split('T')[0]; }
+
+function fmtDt(iso) {
+  if (!iso) return { date:'TBA', time:'' };
+  const d = new Date(iso);
+  return {
+    date: d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),
+    time: d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+  };
+}
+
+function setLB(pct) { document.getElementById('lb').style.width = pct+'%'; }
+
+function showEmpty(msg) {
+  document.getElementById('resultsScroll').innerHTML =
+    `<div class="empty"><div class="ei">🎵</div><p>${msg}</p></div>`;
+}
+
+function clearMap() {
+  if (state.route) { map.removeLayer(state.route); state.route = null; }
+  state.markers.forEach(m => map.removeLayer(m));
+  state.markers = [];
+  state.cityMarkers.forEach(m => map.removeLayer(m));
+  state.cityMarkers = [];
+  document.getElementById('mapOv').style.display = 'none';
+}
+
+function clearConcertMarkers() {
+  state.markers.forEach(m => map.removeLayer(m));
+  state.markers = [];
+}
+
+function hav(la1,lo1,la2,lo2) {
+  const R=6371,dL=(la2-la1)*Math.PI/180,dO=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dO/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// ── Modal ──────────────────────────────────────────────────────────
+function openModal(svc) {
+  state.modal = svc;
+  const c = MCFG[svc];
+  document.getElementById('mTitle').textContent = c.title;
+  document.getElementById('mDesc').innerHTML = c.desc +
+    ` <a href="${c.link}" target="_blank" style="color:var(--accent);text-decoration:none">Get key →</a>`;
+  document.getElementById('mInput').placeholder = c.placeholder;
+  document.getElementById('mInput').value = state.keys[svc] || '';
+  document.getElementById('modalEl').classList.add('open');
+  setTimeout(() => document.getElementById('mInput').focus(), 80);
+}
+function closeModal() { document.getElementById('modalEl').classList.remove('open'); state.modal = null; }
+function closeModalOutside(e) { if (e.target === document.getElementById('modalEl')) closeModal(); }
+
+function saveKey() {
+  const k = document.getElementById('mInput').value.trim();
+  const s = state.modal;
+  if (k) {
+    state.keys[s] = k;
+    document.getElementById('row-'+s).classList.add('on');
+    document.getElementById('row-'+s).classList.remove('dim');
+    const notes = { tm:'Major shows · connected ✓', jb:'Indie venues · connected ✓',
+                    eb:'DIY shows · connected ✓', sp:'Artist matching · connected ✓', dz:'Favorites · connected ✓' };
+    document.getElementById('note-'+s).textContent = notes[s]||'Connected ✓';
+    const hdr = document.getElementById('hdr-'+s);
+    if (hdr) hdr.classList.remove('p-off');
+    clearCache();  // new source → need fresh fetch
+  }
+  closeModal();
+}
+
+// ── Geocode ────────────────────────────────────────────────────────
+async function geocode(city) {
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}&limit=1`,
+      { headers:{'Accept-Language':'en','User-Agent':'RoadShowApp/1.0'} }
+    );
+    const d = await r.json();
+    if (d.length) return {
+      lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon),
+      name: d[0].display_name.split(',').slice(0,2).join(',').trim()
+    };
+  } catch(e) { console.warn('Geocode failed for', city, e); }
+  return null;
+}
+
+// ── Routing ────────────────────────────────────────────────────────
+async function getRoute(pts) {
+  const coords = pts.map(p=>`${p.lon},${p.lat}`).join(';');
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const r = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timer);
+    const d = await r.json();
+    if (d.routes?.[0]) return { geo: d.routes[0].geometry, dist: d.routes[0].distance };
+  } catch(e) { console.warn('OSRM failed:', e.message); }
+  return null;
+}
+
+function sampleRoute(geo, n) {
+  const c = geo.coordinates;
+  const step = Math.max(1, Math.floor(c.length/n));
+  return Array.from({length:n}, (_,i) => {
+    const p = c[Math.min(i*step, c.length-1)];
+    return { lon:p[0], lat:p[1] };
+  });
+}
+
+// ── API: Ticketmaster ──────────────────────────────────────────────
+async function fetchTM(lat, lon, radius, df, dt, key) {
+  const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${key}` +
+    `&latlong=${lat},${lon}&radius=${radius}&unit=miles` +
+    `&startDateTime=${df}T00:00:00Z&endDateTime=${dt}T23:59:59Z` +
+    `&classificationName=music&size=50&sort=date,asc`;
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    return (d?._embedded?.events || []).map(e => ({
+      id:'tm-'+e.id, source:'tm',
+      artist: e.name,
+      venue:  e._embedded?.venues?.[0]?.name || 'TBA',
+      city:   [e._embedded?.venues?.[0]?.city?.name, e._embedded?.venues?.[0]?.state?.stateCode].filter(Boolean).join(', '),
+      lat:    parseFloat(e._embedded?.venues?.[0]?.location?.latitude),
+      lon:    parseFloat(e._embedded?.venues?.[0]?.location?.longitude),
+      datetime: e.dates?.start?.dateTime || (e.dates?.start?.localDate+'T20:00:00'),
+      ticketUrl: e.url,
+      genre:  e.classifications?.[0]?.genre?.name || null
+    }));
+  } catch(e) { console.warn('TM error:', e); return []; }
+}
+
+// ── API: Jambase ───────────────────────────────────────────────────
+async function fetchJB(lat, lon, radius, df, dt, key) {
+  const url = `https://www.jambase.com/jb-api/v1/events?apikey=${key}` +
+    `&geoCoordsLat=${lat}&geoCoordsLon=${lon}&geoRadiusMiles=${radius}` +
+    `&eventDateFrom=${df}&eventDateTo=${dt}&perPage=50`;
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    return (d?.events || []).map(e => ({
+      id:'jb-'+e.identifier, source:'jb',
+      artist:   (e.performer||[]).map(p=>p.name).join(', ') || 'Unknown',
+      venue:    e.location?.name || 'TBA',
+      city:     [e.location?.address?.addressLocality, e.location?.address?.addressRegion].filter(Boolean).join(', '),
+      lat:      parseFloat(e.location?.geo?.latitude),
+      lon:      parseFloat(e.location?.geo?.longitude),
+      datetime: e.startDate,
+      ticketUrl: e.offers?.[0]?.url || e.url || null,
+      genre:    e.performer?.[0]?.genre?.[0] || null
+    }));
+  } catch(e) { console.warn('JB error:', e); return []; }
+}
+
+// ── API: Eventbrite ────────────────────────────────────────────────
+async function fetchEB(lat, lon, radius, df, dt, token) {
+  const km = Math.round(radius*1.609);
+  const url = `https://www.eventbriteapi.com/v3/events/search/?token=${token}` +
+    `&location.latitude=${lat}&location.longitude=${lon}&location.within=${km}km` +
+    `&start_date.range_start=${df}T00:00:00&start_date.range_end=${dt}T23:59:59` +
+    `&categories=103&expand=venue&page_size=50`;
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    return (d?.events || []).map(e => ({
+      id:'eb-'+e.id, source:'eb',
+      artist:   e.name?.text || 'Event',
+      venue:    e.venue?.name || 'TBA',
+      city:     [e.venue?.address?.city, e.venue?.address?.region].filter(Boolean).join(', '),
+      lat:      parseFloat(e.venue?.latitude),
+      lon:      parseFloat(e.venue?.longitude),
+      datetime: e.start?.utc || e.start?.local,
+      ticketUrl: e.url,
+      genre:    'Music'
+    }));
+  } catch(e) { console.warn('EB error:', e); return []; }
+}
+
+// ── Demo data ──────────────────────────────────────────────────────
+function mockData(waypoints, df, dt) {
+  const artists = ['Zach Bryan','Tyler Childers','Boygenius','Hozier','Maggie Rogers',
+    'Lord Huron','Khruangbin','Leon Bridges','Jason Isbell','Sturgill Simpson',
+    'Brandi Carlile','Marcus King','Caamp','Gregory Alan Isakov','Watchhouse',
+    'Old Crow Medicine Show','The Avett Brothers','Waxahatchee','Adrianne Lenker','Phosphorescent',
+    'Turnpike Troubadours','Sierra Ferrell','Shakey Graves','Orville Peck','Amythyst Kiah'];
+  const venues = ['Ryman Auditorium','House of Blues','The Fillmore','Mercury Ballroom',
+    "Stubb's Amphitheater",'The Tabernacle','Terminal 5','9:30 Club','First Avenue','Thalia Hall',
+    'The Basement East','Exit/In','Cat\'s Cradle','The Bottleneck','Red Rocks Amphitheatre',
+    'The Bowery Ballroom','Music Hall of Williamsburg'];
+  const genres = ['Country','Folk','Indie Rock','Americana','Blues','Singer-Songwriter','Alt-Country','Bluegrass'];
+  const srcs = ['tm','jb','eb'];
+  const start = new Date(df), end = new Date(dt);
+  const days = Math.ceil((end-start)/86400000);
+  const out = [];
+  waypoints.forEach((wp,wi) => {
+    const n = 2+Math.floor(Math.random()*3);
+    for (let i=0;i<n;i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + Math.min(Math.floor((wi/waypoints.length)*days)+Math.floor(Math.random()*2), days));
+      d.setHours(18 + Math.floor(Math.random()*4), Math.random()>.5?0:30, 0);
+      out.push({
+        id:`demo-${wi}-${i}`, source: srcs[Math.floor(Math.random()*3)], _demo:true,
+        artist:  artists[Math.floor(Math.random()*artists.length)],
+        venue:   venues[Math.floor(Math.random()*venues.length)],
+        city:    nearestCity(wp.lat, wp.lon),
+        lat: wp.lat+(Math.random()-.5)*.35,
+        lon: wp.lon+(Math.random()-.5)*.35,
+        datetime: d.toISOString(),
+        ticketUrl: null,
+        genre: genres[Math.floor(Math.random()*genres.length)]
+      });
+    }
+  });
+  return out;
+}
+
+function nearestCity(lat,lon) {
+  const C=[
+    {lat:36.17,lon:-86.78,n:'Nashville, TN'},{lat:35.15,lon:-90.05,n:'Memphis, TN'},
+    {lat:29.95,lon:-90.07,n:'New Orleans, LA'},{lat:33.75,lon:-84.39,n:'Atlanta, GA'},
+    {lat:30.27,lon:-97.74,n:'Austin, TX'},{lat:32.78,lon:-96.80,n:'Dallas, TX'},
+    {lat:29.76,lon:-95.37,n:'Houston, TX'},{lat:39.95,lon:-75.17,n:'Philadelphia, PA'},
+    {lat:40.71,lon:-74.00,n:'New York, NY'},{lat:42.36,lon:-71.06,n:'Boston, MA'},
+    {lat:41.88,lon:-87.63,n:'Chicago, IL'},{lat:44.98,lon:-93.27,n:'Minneapolis, MN'},
+    {lat:39.74,lon:-104.98,n:'Denver, CO'},{lat:47.61,lon:-122.33,n:'Seattle, WA'},
+    {lat:37.77,lon:-122.42,n:'San Francisco, CA'},{lat:34.05,lon:-118.24,n:'Los Angeles, CA'},
+    {lat:35.23,lon:-80.84,n:'Charlotte, NC'},{lat:38.63,lon:-90.20,n:'St. Louis, MO'},
+    {lat:36.85,lon:-75.98,n:'Virginia Beach, VA'},{lat:37.54,lon:-77.44,n:'Richmond, VA'},
+    {lat:32.08,lon:-81.09,n:'Savannah, GA'},{lat:28.54,lon:-81.38,n:'Orlando, FL'},
+    {lat:25.76,lon:-80.19,n:'Miami, FL'},{lat:38.90,lon:-77.04,n:'Washington, DC'}
+  ];
+  return C.reduce((b,c)=>hav(lat,lon,c.lat,c.lon)<hav(lat,lon,b.lat,b.lon)?c:b).n;
+}
+
+function dedupe(arr) {
+  const seen = new Set();
+  return arr.filter(c => {
+    const k = `${(c.artist||'').toLowerCase().trim()}-${(c.venue||'').toLowerCase().trim()}-${(c.datetime||'').slice(0,10)}`;
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ── MAIN SEARCH ──────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+async function searchConcerts() {
+  const sc = document.getElementById('startCity').value.trim();
+  const ec = document.getElementById('endCity').value.trim();
+  const st = document.getElementById('stopCities').value.trim();
+  const ds = document.getElementById('dateStart').value;
+  const de = document.getElementById('dateEnd').value;
+
+  if (!sc||!ec) { alert('Please enter a start and end city.'); return; }
+  if (!ds||!de) { alert('Please select Start Driving and End Trip dates.'); return; }
+  const diffDays = Math.ceil((new Date(de) - new Date(ds)) / 86400000);
+  if (diffDays < 0) { alert('End Trip date must be after Start Driving date.'); return; }
+  state.lastDiffDays = diffDays;
+
+  const buf = parseInt(document.getElementById('bufferSlider').value);
+  const rad = parseInt(document.getElementById('radiusSlider').value);
+  const dfD = new Date(ds); dfD.setDate(dfD.getDate()-buf);
+  const dtD = new Date(de); dtD.setDate(dtD.getDate()+buf);
+  const df = fd(dfD), dt = fd(dtD);
+
+  const names = [sc, ...st.split(',').map(s=>s.trim()).filter(Boolean), ec];
+  const ck = cacheKey(names, rad, state.keys);
+
+  // ── CACHE HIT: same route+radius+keys, cached dates cover the request ──
+  if (cache.key === ck && cacheDateCovers(df, dt)) {
+    cache.hits++;
+    console.log(`⚡ Cache hit #${cache.hits} — filtering ${cache.allConcerts.length} cached → ${df}…${dt}`);
+
+    const concerts = filterByDate(cache.allConcerts, df, dt);
+    state.concerts = concerts;
+
+    clearConcertMarkers();
+    addConcertMarkers(concerts);
+    updateStatsOverlay(concerts, diffDays);
+    updateCacheUI();
+    renderResults(concerts);
+    return;
+  }
+
+  // ── CACHE MISS: full API fetch ──
+  const btn = document.getElementById('searchBtn');
+  btn.disabled=true; btn.textContent='⟳ Searching...';
+  setLB(8); clearMap();
+
+  showEmpty('Geocoding cities...');
+  console.log('▶ Step 1: Geocoding', names);
+
+  const geo = (await Promise.all(names.map(geocode))).filter(Boolean);
+  console.log('✓ Geocoded:', geo.length, 'cities');
+
+  if (geo.length < 2) {
+    alert('Could not locate your cities. Please check spelling.');
+    btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return;
+  }
+
+  setLB(25); showEmpty('Calculating route...');
+  const route = await getRoute(geo);
+  let waypoints = geo;
+
+  if (route) {
+    console.log('✓ Route:', Math.round(route.dist/1609), 'miles');
+    state.route = L.geoJSON(route.geo, {
+      style:{color:'#e8c547',weight:3,opacity:.65,dashArray:'6,4'}
+    }).addTo(map);
+    const nWp = Math.min(10, Math.max(5, Math.floor(route.dist/70000)));
+    waypoints = sampleRoute(route.geo, nWp);
+    document.getElementById('stDist').textContent = Math.round(route.dist/1609).toLocaleString()+' mi';
+    map.fitBounds(state.route.getBounds(), {padding:[50,50]});
+  } else {
+    const lls = geo.map(p=>[p.lat,p.lon]);
+    state.route = L.polyline(lls, {color:'#e8c547',weight:3,opacity:.5,dashArray:'6,4'}).addTo(map);
+    map.fitBounds(L.latLngBounds(lls), {padding:[60,60]});
+    document.getElementById('stDist').textContent = 'N/A';
+  }
+
+  // City markers
+  geo.forEach((p,i) => {
+    const col = i===0?'#4ade80':i===geo.length-1?'#ff5c38':'#e8c547';
+    const r = i===0||i===geo.length-1 ? 9 : 7;
+    const m = L.circleMarker([p.lat,p.lon],{radius:r,fillColor:col,color:'#0a0a0a',weight:2,fillOpacity:1})
+     .addTo(map).bindPopup(`<b style="font-family:monospace">${names[i]}</b>`);
+    state.cityMarkers.push(m);
+  });
+
+  setLB(45); showEmpty('Fetching concerts...');
+  console.log('▶ Step 3: Fetching | Keys:', {tm:!!state.keys.tm,jb:!!state.keys.jb,eb:!!state.keys.eb});
+  console.log('  Waypoints:', waypoints.length, '| Radius:', rad, 'mi | Dates:', df, '→', dt);
+
+  let concerts = [];
+  try {
+    if (state.keys.tm || state.keys.jb || state.keys.eb) {
+      const batches = await Promise.all(
+        waypoints.flatMap(wp => [
+          state.keys.tm ? fetchTM(wp.lat,wp.lon,rad,df,dt,state.keys.tm) : Promise.resolve([]),
+          state.keys.jb ? fetchJB(wp.lat,wp.lon,rad,df,dt,state.keys.jb) : Promise.resolve([]),
+          state.keys.eb ? fetchEB(wp.lat,wp.lon,rad,df,dt,state.keys.eb) : Promise.resolve([])
+        ])
+      );
+      concerts = dedupe(batches.flat());
+      console.log('✓ API results:', concerts.length, 'shows after dedup');
+    } else {
+      console.log('  No keys — using demo data');
+      concerts = mockData(waypoints, df, dt);
+    }
+  } catch(err) {
+    console.error('✗ Concert fetch error:', err);
+    showEmpty('Something went wrong. See console for details.');
+    btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return;
+  }
+
+  // ── Store in cache ──
+  cache.key = ck;
+  cache.dateFrom = df;
+  cache.dateTo = dt;
+  cache.allConcerts = concerts;
+  cache.hits = 0;
+  updateCacheUI();
+  console.log(`💾 Cached ${concerts.length} shows for ${df}→${dt}`);
+
+  state.concerts = concerts;
+  setLB(85);
+
+  addConcertMarkers(concerts);
+  updateStatsOverlay(concerts, diffDays);
+
+  setLB(100);
+  renderResults(concerts);
+  setTimeout(()=>setLB(0), 600);
+  btn.disabled=false; btn.textContent='⟶ Find Shows';
+}
+
+// ── Map markers ───────────────────────────────────────────────────
+function addConcertMarkers(concerts) {
+  concerts.forEach(c => {
+    if (!c.lat||!c.lon||isNaN(c.lat)||isNaN(c.lon)) return;
+    const m = L.circleMarker([c.lat,c.lon], {
+      radius:5, fillColor:SRC_COLORS[c.source]||'#e8c547',
+      color:'#0a0a0a', weight:1.5, fillOpacity:.85
+    }).addTo(map);
+    m.bindPopup(mkPopup(c));
+    state.markers.push(m);
+  });
+}
+
+function updateStatsOverlay(concerts, diffDays) {
+  const cnt = {tm:0,jb:0,eb:0};
+  concerts.forEach(c => { if (cnt[c.source]!==undefined) cnt[c.source]++; });
+  document.getElementById('srcBk').innerHTML = Object.entries(cnt)
+    .filter(([,n])=>n>0)
+    .map(([s,n])=>`<div class="sk"><span style="color:${SRC_COLORS[s]}">${SRC_LABELS[s]}</span><span style="color:var(--accent)">${n}</span></div>`)
+    .join('');
+  document.getElementById('stShows').textContent = concerts.length;
+  document.getElementById('stVisible').textContent = concerts.length;
+  document.getElementById('stTrip').textContent = diffDays + ' day' + (diffDays!==1?'s':'');
+  document.getElementById('mapOv').style.display = 'block';
+}
+
+// ── Popup ──────────────────────────────────────────────────────────
+function mkPopup(c) {
+  const {date,time} = fmtDt(c.datetime);
+  const sl = SRC_LABELS[c.source] || 'Demo';
+  return `<div style="font-family:'DM Mono',monospace;font-size:.68rem;min-width:155px;line-height:1.7">
+    <strong style="font-size:.82rem;display:block;margin-bottom:2px">${c.artist}</strong>
+    ${c.venue}<br><span style="color:#aaa">${c.city}</span><br>
+    <span style="color:#e8c547">${date} · ${time}</span><br>
+    <span style="color:#555;font-size:.58rem">${sl}${c.genre?' · '+c.genre:''}</span>
+    ${c.ticketUrl?`<br><a href="${c.ticketUrl}" target="_blank" style="color:#ff5c38;text-decoration:none;display:inline-block;margin-top:3px">🎟 Tickets</a>`:''}
+  </div>`;
+}
+
+// ── Render results ─────────────────────────────────────────────────
+function renderResults(concerts) {
+  const isDemo = concerts.some(c=>c._demo);
+  document.getElementById('rctrlBar').style.display = concerts.length ? 'flex' : 'none';
+  document.getElementById('rcLabel').textContent = concerts.length
+    ? `${concerts.length} show${concerts.length!==1?'s':''} found`
+    : 'No results';
+
+  if (!concerts.length) {
+    showEmpty('No shows found along your route.<br>Try a wider radius or date buffer.');
+    return;
+  }
+
+  let html = '';
+  if (isDemo) html += '<div class="demo-note">⚡ Demo mode — connect API keys for real shows.</div>';
+  html += '<div id="cList"></div>';
+  document.getElementById('resultsScroll').innerHTML = html;
+  renderList(concerts);
+}
+
+function renderList(concerts) {
+  const filtered = concerts.filter(c =>
+    state.filters.has(c.source) || (c._demo && state.filters.has('demo'))
+  );
+  document.getElementById('cList').innerHTML = filtered.map((c,i) => mkCard(c,i)).join('');
+  const vis = document.getElementById('stVisible');
+  if (vis) vis.textContent = filtered.length;
+}
+
+function toggleFilter(src) {
+  const btn = document.getElementById('flt-'+src);
+  if (state.filters.has(src)) { state.filters.delete(src); btn.className='fb'; }
+  else { state.filters.add(src); btn.className=`fb f-${src}`; }
+  state.filters.add('demo');
+  renderList(state.concerts);
+}
+
+function sortBy(m) {
+  const s = [...state.concerts];
+  if (m==='date')   s.sort((a,b)=>new Date(a.datetime)-new Date(b.datetime));
+  if (m==='artist') s.sort((a,b)=>a.artist.localeCompare(b.artist));
+  if (m==='source') s.sort((a,b)=>a.source.localeCompare(b.source));
+  if (m==='city')   s.sort((a,b)=>(a.city||'').localeCompare(b.city||''));
+  state.concerts = s;
+  renderList(s);
+}
+
+function mkCard(c,i) {
+  const {date,time} = fmtDt(c.datetime);
+  const stc = {tm:'t-tm',jb:'t-jb',eb:'t-eb'}[c.source]||'t-demo';
+  const slb = SRC_LABELS[c.source]||'Demo';
+  const hq  = encodeURIComponent(`hotels near ${c.venue} ${c.city}`);
+  return `<div class="cc s-${c._demo?'demo':c.source}" style="animation-delay:${i*18}ms" onclick="zoomTo(${c.lat},${c.lon})">
+    <div class="ct">
+      <div class="an">${c.artist}</div>
+      <div class="cd">${date}<br>${time}</div>
+    </div>
+    <div class="vn">${c.venue}</div>
+    <div class="ctags">
+      <span class="tag t-city">${c.city}</span>
+      <span class="tag ${stc}">${slb}</span>
+      ${c.genre?`<span class="tag t-gen">${c.genre}</span>`:''}
+    </div>
+    <div class="ca">
+      ${c.ticketUrl
+        ?`<a href="${c.ticketUrl}" target="_blank" class="bs b-tk" onclick="event.stopPropagation()">🎟 Tickets</a>`
+        :`<span class="bs b-gh" style="opacity:.35;cursor:default">🎟 No link</span>`}
+      <button class="bs b-gh" onclick="event.stopPropagation();zoomTo(${c.lat},${c.lon})">📍 Map</button>
+      <a href="https://www.google.com/maps/search/${hq}" target="_blank" class="bs b-gh" onclick="event.stopPropagation()">🏨 Hotels</a>
+    </div>
+  </div>`;
+}
+
+function zoomTo(lat, lon) {
+  if (!lat||!lon||isNaN(lat)||isNaN(lon)) return;
+  map.setView([lat,lon], 13, {animate:true});
+}
+
+</script>
+</body>
+</html>
