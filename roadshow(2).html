@@ -226,6 +226,23 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
 .b-save:hover{background:#f0d060;}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+
+/* ─── Dynamic Stop Inputs ─── */
+.stop-row{display:flex;align-items:center;gap:5px;margin-bottom:5px;}
+.stop-row:last-child{margin-bottom:0;}
+.stop-input{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:8px 11px;font-family:'DM Mono',monospace;font-size:.7rem;border-radius:var(--r);
+  outline:none;transition:border-color .25s,box-shadow .25s;min-width:0;}
+.stop-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(232,197,71,.08);}
+.stop-input::placeholder{color:var(--text3);}
+.stop-add-btn,.stop-rm-btn{flex-shrink:0;width:24px;height:24px;border-radius:var(--r);
+  border:1px solid var(--border);background:transparent;color:var(--text2);
+  font-family:'DM Mono',monospace;font-size:.85rem;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .18s;}
+.stop-add-btn:hover{border-color:var(--accent);color:var(--accent);}
+.stop-rm-btn{color:var(--text3);}
+.stop-rm-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+@keyframes stopSlideIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
 </style>
 </head>
 <body>
@@ -254,8 +271,15 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
         <input type="text" id="startCity" placeholder="e.g. Nashville, TN"/></div>
       <div class="ig"><div class="il"><span class="dot de"></span> Destination</div>
         <input type="text" id="endCity" placeholder="e.g. New Orleans, LA"/></div>
-      <div class="ig"><div class="il"><span class="dot dm"></span> Stops (comma-separated)</div>
-        <input type="text" id="stopCities" placeholder="e.g. Memphis, TN, Baton Rouge, LA"/></div>
+      <div class="ig" id="stopsSection">
+        <div class="il"><span class="dot dm"></span> Stops</div>
+        <div id="stopsList">
+          <div class="stop-row" data-index="0">
+            <input type="text" class="stop-input" placeholder="e.g. Memphis, TN"/>
+            <button class="stop-add-btn" onclick="addStopInput()" title="Add another stop">+</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="ss">
@@ -383,6 +407,60 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
 if (typeof L === 'undefined') {
   document.getElementById('map').innerHTML =
     '<div style="padding:40px;color:#888;font-family:monospace;font-size:.8rem">⚠ Map library failed to load. Check your connection and reload.</div>';
+}
+
+// ── Dynamic Stop Inputs ────────────────────────────────────────────
+const MAX_EXTRA_STOPS = 25;
+
+function addStopInput() {
+  const list = document.getElementById('stopsList');
+  const rows = list.querySelectorAll('.stop-row');
+  if (rows.length >= MAX_EXTRA_STOPS + 1) return; // 1 base + 25 extra
+
+  // Swap + button on last row to - button if it just got a sibling
+  const lastRow = rows[rows.length - 1];
+  const lastAddBtn = lastRow.querySelector('.stop-add-btn');
+  if (lastAddBtn) {
+    lastAddBtn.classList.replace('stop-add-btn', 'stop-rm-btn');
+    lastAddBtn.textContent = '−';
+    lastAddBtn.title = 'Remove this stop';
+    lastAddBtn.onclick = () => removeStopInput(lastAddBtn);
+  }
+
+  const newRow = document.createElement('div');
+  newRow.className = 'stop-row';
+  newRow.style.animation = 'stopSlideIn .2s ease both';
+  newRow.innerHTML = `<input type="text" class="stop-input" placeholder="e.g. Baton Rouge, LA"/>` +
+    (rows.length < MAX_EXTRA_STOPS
+      ? `<button class="stop-add-btn" onclick="addStopInput()" title="Add another stop">+</button>`
+      : ``);
+  list.appendChild(newRow);
+}
+
+function removeStopInput(btn) {
+  const list = document.getElementById('stopsList');
+  const row = btn.closest('.stop-row');
+  row.remove();
+
+  // Restore + button on whatever is now the last row
+  const rows = list.querySelectorAll('.stop-row');
+  if (rows.length === 0) return;
+  const lastRow = rows[rows.length - 1];
+  // Remove any existing rm button on last row and ensure + button is present
+  const existingRm = lastRow.querySelector('.stop-rm-btn');
+  if (existingRm) {
+    existingRm.classList.replace('stop-rm-btn', 'stop-add-btn');
+    existingRm.textContent = '+';
+    existingRm.title = 'Add another stop';
+    existingRm.onclick = () => addStopInput();
+  } else if (!lastRow.querySelector('.stop-add-btn')) {
+    const addBtn = document.createElement('button');
+    addBtn.className = 'stop-add-btn';
+    addBtn.textContent = '+';
+    addBtn.title = 'Add another stop';
+    addBtn.onclick = () => addStopInput();
+    lastRow.appendChild(addBtn);
+  }
 }
 
 // ── Constants ──────────────────────────────────────────────────────
@@ -758,7 +836,8 @@ function dedupe(arr) {
 async function searchConcerts() {
   const sc = document.getElementById('startCity').value.trim();
   const ec = document.getElementById('endCity').value.trim();
-  const st = document.getElementById('stopCities').value.trim();
+  const st = Array.from(document.querySelectorAll('#stopsList .stop-input'))
+    .map(i => i.value.trim()).filter(Boolean).join(',');
   const ds = document.getElementById('dateStart').value;
   const de = document.getElementById('dateEnd').value;
 
