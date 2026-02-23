@@ -2,10 +2,23 @@
   publish = "."
   functions = "netlify/functions"
 
-# Route Deezer proxy requests to the serverless function.
-# The function handles the ARL cookie server-side, bypassing CORS.
+# Deezer proxy — handles ARL cookie server-side, bypassing CORS.
 [[redirects]]
   from = "/deezer-proxy"
   to = "/.netlify/functions/deezer-proxy"
+  status = 200
+  force = true
+
+# Public config — exposes Spotify client ID and Last.fm API key to the frontend.
+[[redirects]]
+  from = "/api/config"
+  to = "/.netlify/functions/config"
+  status = 200
+  force = true
+
+# Last.fm auth — server-side token exchange, keeps Shared Secret off the client.
+[[redirects]]
+  from = "/api/lastfm-auth"
+  to = "/.netlify/functions/lastfm-auth"
   status = 200
   force = true

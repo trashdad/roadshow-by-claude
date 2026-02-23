@@ -43,8 +43,12 @@ exports.handler = async (event) => {
       path: '/ajax/gw-light.php' + qs,
       method: 'POST',
       headers: {
-        'Content-Type': 'text/plain;charset=UTF-8',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Content-Type': event.headers['content-type'] || 'text/plain;charset=UTF-8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Origin': 'https://www.deezer.com',
+        'Referer': 'https://www.deezer.com/',
         ...(arl && { Cookie: `arl=${arl}` }),
       },
     };

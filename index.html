@@ -234,6 +234,11 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
 .b-save{background:var(--accent);border:none;color:#0a0a0a;padding:7px 14px;
   font-family:'DM Mono',monospace;font-size:.62rem;border-radius:var(--r);cursor:pointer;font-weight:500;transition:all .15s;}
 .b-save:hover{background:#f0d060;}
+.b-oauth{width:100%;padding:11px;border:none;border-radius:var(--r);font-family:'DM Mono',monospace;
+  font-size:.72rem;letter-spacing:.06em;cursor:pointer;font-weight:500;transition:all .18s;color:#fff;
+  background:#1db954;margin-bottom:0;}
+.b-oauth.lf-btn{background:#d51007;}
+.b-oauth:hover{opacity:.88;transform:translateY(-1px);}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 
@@ -420,14 +425,21 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
   <div class="md">
     <h3 id="mTitle">Connect</h3>
     <p id="mDesc"></p>
-    <input type="text" id="mInput" placeholder=""/>
-    <div id="mInput2Wrap" style="display:none">
-      <p style="font-size:.5rem;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px;margin-top:-8px" id="mInput2Label">API Key</p>
-      <input type="text" id="mInput2" placeholder=""/>
+    <!-- OAuth section: shown when site has pre-configured credentials -->
+    <div id="mOAuthSection" style="display:none;margin-bottom:4px">
+      <button class="b-oauth" id="mOAuthBtn" onclick="startModalOAuth()">Login</button>
+    </div>
+    <!-- Manual section: shown for API-key services or as fallback -->
+    <div id="mManualSection">
+      <input type="text" id="mInput" placeholder=""/>
+      <div id="mInput2Wrap" style="display:none">
+        <p style="font-size:.5rem;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px;margin-top:-8px" id="mInput2Label">API Key</p>
+        <input type="text" id="mInput2" placeholder=""/>
+      </div>
     </div>
     <div class="ma">
       <button class="b-cancel" onclick="closeModal()">Cancel</button>
-      <button class="b-save" onclick="saveKey()">Save</button>
+      <button class="b-save" id="mSaveBtn" onclick="saveKey()">Save</button>
     </div>
   </div>
 </div>
@@ -513,6 +525,30 @@ const MCFG = {
 const SRC_COLORS = { tm:'#60a5fa', jb:'#4ade80', eb:'#f97316' };
 const SRC_LABELS = { tm:'Ticketmaster', jb:'Jambase', eb:'Eventbrite' };
 
+// ── App config (from /api/config — set env vars in Netlify Dashboard) ──────
+let appConfig = null;
+
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    if (res.ok) {
+      appConfig = await res.json();
+      // Swap modal descriptions for services that have pre-configured credentials
+      if (appConfig.spotifyClientId) {
+        MCFG.sp.desc = 'Log in with your Spotify account. Your top artists will be matched to shows along your route.';
+      }
+      if (appConfig.lastfmApiKey) {
+        MCFG.lf.desc = 'Log in with your Last.fm account. Your top artists will be matched to shows along your route.';
+      }
+    } else {
+      appConfig = {};
+    }
+  } catch (e) {
+    console.log('Config endpoint not available — using manual key entry mode.');
+    appConfig = {};
+  }
+}
+
 // ── State ──────────────────────────────────────────────────────────
 const state = {
   keys:{}, concerts:[], markers:[], route:null, cityMarkers:[],
@@ -546,7 +582,7 @@ const cache = {
 const sessionCache = new Map(); // cacheKey → {dateFrom, dateTo, allConcerts}
 
 function cacheKey(names, radius, keys) {
-  return JSON.stringify({ n:names.map(s=>s.toLowerCase().trim()), r:radius, tm:!!keys.tm, jb:!!keys.jb, eb:!!keys.eb, lf:!!state.lfSession, dz:!!keys.dz });
+  return JSON.stringify({ n:names.map(s=>s.toLowerCase().trim()), r:radius, tm:!!keys.tm, jb:!!keys.jb, eb:!!keys.eb, sp:!!state.spToken, lf:!!state.lfSession, dz:!!keys.dz });
 }
 
 function cacheDateCovers(df, dt) {
@@ -669,28 +705,72 @@ function hav(la1,lo1,la2,lo2) {
 function openModal(svc) {
   state.modal = svc;
   const c = MCFG[svc];
+
+  // Determine if we can use pre-configured OAuth (no manual key entry)
+  const useSpOAuth = svc === 'sp' && appConfig?.spotifyClientId;
+  const useLfOAuth = svc === 'lf' && appConfig?.lastfmApiKey;
+  const useOAuth = useSpOAuth || useLfOAuth;
+
   document.getElementById('mTitle').textContent = c.title;
   document.getElementById('mDesc').innerHTML = c.desc;
-  // Primary input
-  document.getElementById('mInput').style.display = '';
-  document.getElementById('mInput').placeholder = c.placeholder || '';
-  document.getElementById('mInput').value = svc === 'lf' ? (state.lfKey || '') : (state.keys[svc] || '');
-  // Second input (Last.fm Shared Secret only)
-  const wrap2 = document.getElementById('mInput2Wrap');
-  wrap2.style.display = svc === 'lf' ? '' : 'none';
-  document.getElementById('mInput2Label').textContent = c.label2 || 'API Key';
-  document.getElementById('mInput2').placeholder = c.placeholder2 || '';
-  document.getElementById('mInput2').value = svc === 'lf' ? (state.lfSecret || '') : '';
-  // Button label
-  document.querySelector('.b-save').textContent =
-    svc === 'lf' ? 'Authorize with Last.fm →' :
-    svc === 'sp' ? 'Authorize with Spotify →' :
-    'Save';
+
+  const oauthSection  = document.getElementById('mOAuthSection');
+  const manualSection = document.getElementById('mManualSection');
+  const saveBtn       = document.getElementById('mSaveBtn');
+  const oauthBtn      = document.getElementById('mOAuthBtn');
+
+  if (useOAuth) {
+    // Pre-configured: just show a login button, no inputs needed
+    oauthSection.style.display  = '';
+    manualSection.style.display = 'none';
+    saveBtn.style.display       = 'none';
+    if (useSpOAuth) {
+      oauthBtn.textContent = state.spToken ? '🎵 Reconnect Spotify' : '🎵 Login with Spotify';
+      oauthBtn.className   = 'b-oauth';
+    } else {
+      oauthBtn.textContent = state.lfSession ? `🎵 Reconnect Last.fm` : '🎵 Login with Last.fm';
+      oauthBtn.className   = 'b-oauth lf-btn';
+    }
+  } else {
+    // Manual key entry (API-key services, or OAuth fallback when no server config)
+    oauthSection.style.display  = 'none';
+    manualSection.style.display = '';
+    saveBtn.style.display       = '';
+
+    document.getElementById('mInput').placeholder = c.placeholder || '';
+    document.getElementById('mInput').value = svc === 'lf' ? (state.lfKey || '') : (state.keys[svc] || '');
+    // Second input (Last.fm Shared Secret only)
+    const wrap2 = document.getElementById('mInput2Wrap');
+    wrap2.style.display = svc === 'lf' ? '' : 'none';
+    document.getElementById('mInput2Label').textContent = c.label2 || 'API Key';
+    document.getElementById('mInput2').placeholder = c.placeholder2 || '';
+    document.getElementById('mInput2').value = svc === 'lf' ? (state.lfSecret || '') : '';
+    saveBtn.textContent =
+      svc === 'lf' ? 'Authorize with Last.fm →' :
+      svc === 'sp' ? 'Authorize with Spotify →' :
+      'Save';
+    setTimeout(() => document.getElementById('mInput').focus(), 80);
+  }
+
   document.getElementById('modalEl').classList.add('open');
-  setTimeout(() => document.getElementById('mInput').focus(), 80);
 }
 function closeModal() { document.getElementById('modalEl').classList.remove('open'); state.modal = null; }
 function closeModalOutside(e) { if (e.target === document.getElementById('modalEl')) closeModal(); }
+
+// Called by the OAuth button when pre-configured credentials are available
+function startModalOAuth() {
+  const s = state.modal;
+  closeModal();
+  if (s === 'sp') {
+    spotifyLogin(appConfig.spotifyClientId);
+  } else if (s === 'lf') {
+    // Server-side exchange: redirect to Last.fm, callback handled by /api/lastfm-auth
+    sessionStorage.setItem('lf_use_server', '1');
+    sessionStorage.setItem('lf_api_key', appConfig.lastfmApiKey);
+    window.location.href =
+      `https://www.last.fm/api/auth/?api_key=${encodeURIComponent(appConfig.lastfmApiKey)}&cb=${encodeURIComponent(lfRedirectUri())}`;
+  }
+}
 
 function saveKey() {
   const s = state.modal;
@@ -701,7 +781,7 @@ function saveKey() {
     if (clientId) { state.keys.sp = clientId; spotifyLogin(clientId); }
     return;
   }
-  // Last.fm — two-field OAuth redirect
+  // Last.fm — two-field OAuth redirect (manual/fallback mode)
   if (s === 'lf') {
     const key    = document.getElementById('mInput').value.trim();
     const secret = document.getElementById('mInput2').value.trim();
@@ -949,6 +1029,49 @@ async function handleLastFmCallback() {
   if (!token) return;
   window.history.replaceState({}, '', window.location.pathname);
 
+  const useServer = sessionStorage.getItem('lf_use_server');
+
+  if (useServer) {
+    // ── Server-side exchange: shared secret never touches the browser ──
+    sessionStorage.removeItem('lf_use_server');
+    const apiKey = sessionStorage.getItem('lf_api_key');
+    sessionStorage.removeItem('lf_api_key');
+
+    let res;
+    try {
+      res = await fetch('/api/lastfm-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+    } catch(e) {
+      console.error('Last.fm server auth network error:', e.message);
+      showEmpty('Last.fm authorization failed (network error). Please try again.');
+      return;
+    }
+
+    let data;
+    try { data = await res.json(); }
+    catch { console.error('Last.fm server auth returned non-JSON.'); return; }
+
+    if (!res.ok || data.error) {
+      const msg = data.error?.message || data.error || JSON.stringify(data);
+      console.error('Last.fm server auth failed:', msg);
+      showEmpty(`Last.fm authorization failed: ${esc(String(msg))}. Please try again.`);
+      return;
+    }
+
+    state.lfKey     = apiKey || appConfig?.lastfmApiKey || '';
+    state.lfSecret  = null;  // kept server-side
+    state.lfSession = data.session.key;
+    state.lfUser    = data.session.name;
+    clearCache();
+    activateSourceUI('lf', `${esc(state.lfUser)} · connected ✓`);
+    console.log(`✓ Last.fm authorized for ${state.lfUser} (server-side exchange)`);
+    return;
+  }
+
+  // ── Client-side exchange (manual key entry / fallback mode) ──
   const apiKey = sessionStorage.getItem('lf_api_key');
   const secret  = sessionStorage.getItem('lf_api_secret');
   sessionStorage.removeItem('lf_api_key');
@@ -1141,13 +1264,14 @@ async function fetchDeezerArtists(arl) {
   console.log(`✓ Deezer session established for user ${userId}`);
 
   // ── Step 2: Fetch user's favorite artists ──
+  // user_id and tab must be in the POST body; nb/start also go in the body.
   let artistsRes;
   try {
     artistsRes = await fetch(
-      `${GW}?method=user.getArtists&input=3&api_version=1.0&api_token=${encodeURIComponent(apiToken)}&nb=500&start=0`,
+      `${GW}?method=user.getArtists&input=3&api_version=1.0&api_token=${encodeURIComponent(apiToken)}`,
       { method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8', ...ARL_HEADER },
-        body: '{}' }
+        headers: { 'Content-Type': 'application/json', ...ARL_HEADER },
+        body: JSON.stringify({ user_id: userId, nb: 500, start: 0, tab: 0 }) }
     );
   } catch (e) {
     throw new Error('Network error fetching Deezer artists: ' + e.message);
@@ -1189,17 +1313,26 @@ async function fetchLastFmArtists() {
     );
   }
 
-  // Build authenticated request with api_sig so it works even for private profiles
+  // Build authenticated request. When secret is available, sign it for private-profile support.
   const method = 'user.getTopArtists';
-  const sigParams = {
-    api_key: state.lfKey, limit: '200', method,
-    period: 'overall', sk: state.lfSession, user: state.lfUser
-  };
-  const sig = lfApiSig(sigParams, state.lfSecret);
-  const url = `https://ws.audioscrobbler.com/2.0/?method=${method}` +
-    `&user=${encodeURIComponent(state.lfUser)}&api_key=${encodeURIComponent(state.lfKey)}` +
-    `&sk=${encodeURIComponent(state.lfSession)}&limit=200&period=overall` +
-    `&api_sig=${sig}&format=json`;
+  let url;
+  if (state.lfSecret) {
+    const sigParams = {
+      api_key: state.lfKey, limit: '200', method,
+      period: 'overall', sk: state.lfSession, user: state.lfUser
+    };
+    const sig = lfApiSig(sigParams, state.lfSecret);
+    url = `https://ws.audioscrobbler.com/2.0/?method=${method}` +
+      `&user=${encodeURIComponent(state.lfUser)}&api_key=${encodeURIComponent(state.lfKey)}` +
+      `&sk=${encodeURIComponent(state.lfSession)}&limit=200&period=overall` +
+      `&api_sig=${sig}&format=json`;
+  } else {
+    // Server-side auth: secret is not available client-side; sk alone is sufficient for
+    // public profiles (the vast majority of Last.fm users).
+    url = `https://ws.audioscrobbler.com/2.0/?method=${method}` +
+      `&user=${encodeURIComponent(state.lfUser)}&api_key=${encodeURIComponent(state.lfKey)}` +
+      `&sk=${encodeURIComponent(state.lfSession)}&limit=200&period=overall&format=json`;
+  }
 
   let res;
   try {
@@ -1361,12 +1494,15 @@ async function searchConcerts() {
     return;
   }
 
-  // ── Step 3: Last.fm / Deezer → build liked-artist set ──
+  // ── Step 3: Spotify / Last.fm / Deezer → build liked-artist set ──
   let likedArtists = new Set();
-  if (state.lfSession || state.keys.dz) {
-    showEmpty('Fetching your artists from Last.fm / Deezer...');
+  if (state.spToken || state.lfSession || state.keys.dz) {
+    showEmpty('Fetching your artists from music services...');
 
-    const [lfResult, dzResult] = await Promise.all([
+    const [spResult, lfResult, dzResult] = await Promise.all([
+      state.spToken
+        ? fetchSpotifyArtists().then(a => ({ ok: true, artists: a })).catch(e => ({ ok: false, svc: 'Spotify', msg: e.message }))
+        : Promise.resolve({ ok: true, artists: [] }),
       state.lfSession
         ? fetchLastFmArtists().then(a => ({ ok: true, artists: a })).catch(e => ({ ok: false, svc: 'Last.fm', msg: e.message }))
         : Promise.resolve({ ok: true, artists: [] }),
@@ -1376,13 +1512,15 @@ async function searchConcerts() {
     ]);
 
     const errors = [];
+    if (!spResult.ok) { console.error('Spotify:', spResult.msg); errors.push({ svc: spResult.svc, msg: spResult.msg }); }
     if (!lfResult.ok) { console.error('Last.fm:', lfResult.msg); errors.push({ svc: lfResult.svc, msg: lfResult.msg }); }
     if (!dzResult.ok) { console.error('Deezer:', dzResult.msg); errors.push({ svc: dzResult.svc, msg: dzResult.msg }); }
 
+    const spArtists = spResult.ok ? spResult.artists : [];
     const lfArtists = lfResult.ok ? lfResult.artists : [];
     const dzArtists = dzResult.ok ? dzResult.artists : [];
-    [...lfArtists, ...dzArtists].forEach(a => likedArtists.add(a.toLowerCase().trim()));
-    console.log(`✓ Liked artists: ${likedArtists.size} (${lfArtists.length} Last.fm + ${dzArtists.length} Deezer)`);
+    [...spArtists, ...lfArtists, ...dzArtists].forEach(a => likedArtists.add(a.toLowerCase().trim()));
+    console.log(`✓ Liked artists: ${likedArtists.size} (${spArtists.length} Spotify + ${lfArtists.length} Last.fm + ${dzArtists.length} Deezer)`);
 
     if (likedArtists.size === 0) {
       // All connected music services failed — show each error prominently
@@ -1576,8 +1714,11 @@ function zoomTo(lat, lon) {
 }
 
 // ── Handle OAuth returns on page load ─────────────────────────────
-handleSpotifyCallback();
-handleLastFmCallback();
+// Load server config first (for pre-configured OAuth buttons), then handle callbacks.
+loadConfig().then(() => {
+  handleSpotifyCallback();
+  handleLastFmCallback();
+});
 
 </script>
 </body>
