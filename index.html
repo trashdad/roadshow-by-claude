@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
 
 <style>
 :root {
@@ -98,7 +99,6 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
 .api-row.dim{opacity:.35;}
 .api-ico{font-size:.78rem;width:16px;text-align:center;flex-shrink:0;}
 .api-info{flex:1;min-width:0;}
-.api-name{font-size:.6rem;color:var(--text);}
 .api-note{font-size:.5rem;color:var(--text3);margin-top:1px;}
 .api-row.on .api-note{color:var(--green);}
 .api-btn{font-family:'DM Mono',monospace;font-size:.52rem;padding:3px 8px;border-radius:var(--r);
@@ -154,12 +154,23 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
   position:relative;overflow:hidden;animation:fadeIn .3s ease both;}
 .cc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;opacity:0;transition:opacity .2s;}
 .cc.s-tm::before{background:#60a5fa;} .cc.s-jb::before{background:var(--green);}
-.cc.s-eb::before{background:#f97316;} .cc.s-demo::before{background:var(--accent);}
+.cc.s-eb::before{background:#f97316;}
 .cc:hover{transform:translateX(3px);border-color:var(--text3);}
 .cc:hover::before{opacity:1;}
 .cc.s-tm:hover{border-color:rgba(96,165,250,.4);}
 .cc.s-jb:hover{border-color:rgba(74,222,128,.4);}
 .cc.s-eb:hover{border-color:rgba(249,115,22,.4);}
+.cc.s-sp:hover{border-color:rgba(29,185,84,.4);}
+.cc.s-dz:hover{border-color:rgba(255,107,157,.4);}
+.cc.s-lf::before{background:#d51007;}.cc.s-lf:hover{border-color:rgba(213,16,7,.4);}
+.t-lf{color:#d51007;border-color:rgba(213,16,7,.22);background:rgba(213,16,7,.07);}
+.p-lf{color:#d51007;border-color:rgba(213,16,7,.35);background:rgba(213,16,7,.07);}
+/* API row badges */
+.api-name{font-size:.6rem;color:var(--text);display:flex;align-items:center;gap:5px;}
+.api-badge{font-size:.42rem;padding:2px 5px;border-radius:2px;letter-spacing:.05em;
+  text-transform:uppercase;white-space:nowrap;border:1px solid;}
+.badge-soon{color:rgba(245,158,11,.85);border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.06);}
+.badge-primary{color:#d51007;border-color:rgba(213,16,7,.3);background:rgba(213,16,7,.06);}
 .ct{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;}
 .an{font-family:'Playfair Display',serif;font-size:.82rem;color:var(--text);font-weight:700;
   flex:1;padding-right:6px;line-height:1.25;}
@@ -171,7 +182,8 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
 .t-tm{color:#60a5fa;border-color:rgba(96,165,250,.22);background:rgba(96,165,250,.07);}
 .t-jb{color:var(--green);border-color:rgba(74,222,128,.22);background:rgba(74,222,128,.07);}
 .t-eb{color:#f97316;border-color:rgba(249,115,22,.22);background:rgba(249,115,22,.07);}
-.t-demo{color:var(--accent);border-color:rgba(232,197,71,.22);background:rgba(232,197,71,.07);}
+.t-sp{color:#1db954;border-color:rgba(29,185,84,.22);background:rgba(29,185,84,.07);}
+.t-dz{color:#ff6b9d;border-color:rgba(255,107,157,.22);background:rgba(255,107,157,.07);}
 .t-gen{color:var(--text3);border-color:var(--border);background:transparent;}
 .ca{display:flex;gap:5px;margin-top:7px;padding-top:7px;border-top:1px solid var(--border);}
 .bs{font-family:'DM Mono',monospace;font-size:.52rem;padding:3px 8px;border-radius:var(--r);
@@ -182,8 +194,6 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
 .b-gh{background:transparent;color:var(--text2);border-color:var(--border);}
 .b-gh:hover{border-color:var(--text2);color:var(--text);}
 
-.demo-note{background:rgba(232,197,71,.06);border:1px solid rgba(232,197,71,.15);
-  border-radius:var(--r);padding:8px 10px;margin-bottom:8px;font-size:.52rem;color:var(--accent);line-height:1.7;}
 
 /* Empty states */
 .empty{text-align:center;padding:40px 16px;color:var(--text3);}
@@ -256,6 +266,7 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
     <span class="pill p-tm p-off" id="hdr-tm">Ticketmaster</span>
     <span class="pill p-jb p-off" id="hdr-jb">Jambase</span>
     <span class="pill p-eb p-off" id="hdr-eb">Eventbrite</span>
+    <span class="pill p-lf p-off" id="hdr-lf">Last.fm</span>
     <span class="pill p-sp p-off" id="hdr-sp">Spotify</span>
     <span class="pill p-dz p-off" id="hdr-dz">Deezer</span>
   </div>
@@ -324,14 +335,28 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
           <button class="api-btn" onclick="openModal('eb')">Connect</button>
         </div>
         <div class="api-divider">── music services ──</div>
+        <div class="api-row dim" id="row-lf">
+          <div class="api-ico">🎵</div>
+          <div class="api-info">
+            <div class="api-name">Last.fm <span class="api-badge badge-primary">★ Primary</span></div>
+            <div class="api-note" id="note-lf">Match top artists · not connected</div>
+          </div>
+          <button class="api-btn" onclick="openModal('lf')">Connect</button>
+        </div>
         <div class="api-row dim" id="row-sp">
           <div class="api-ico">🎵</div>
-          <div class="api-info"><div class="api-name">Spotify</div><div class="api-note" id="note-sp">Match top artists · not connected</div></div>
+          <div class="api-info">
+            <div class="api-name">Spotify</div>
+            <div class="api-note" id="note-sp">Top artists · not connected</div>
+          </div>
           <button class="api-btn" onclick="openModal('sp')">Connect</button>
         </div>
         <div class="api-row dim" id="row-dz">
           <div class="api-ico">🎧</div>
-          <div class="api-info"><div class="api-name">Deezer</div><div class="api-note" id="note-dz">Import favorites · not connected</div></div>
+          <div class="api-info">
+            <div class="api-name">Deezer</div>
+            <div class="api-note" id="note-dz">Favorite artists · not connected</div>
+          </div>
           <button class="api-btn" onclick="openModal('dz')">Connect</button>
         </div>
       </div>
@@ -369,7 +394,8 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
       <div class="empty">
         <div class="ei">🎸</div>
         <p>Enter your route and trip dates,<br>then hit <strong style="color:var(--accent)">Find Shows</strong>.<br><br>
-        Connect API keys for real data<br>or run demo mode without keys.</p>
+        Connect <strong style="color:var(--accent)">Last.fm</strong> to personalize<br>results to artists you already love.<br><br>
+        Requires at least one concert source —<br>Ticketmaster, Jambase, or Eventbrite.</p>
       </div>
     </div>
   </div>
@@ -395,6 +421,10 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
     <h3 id="mTitle">Connect</h3>
     <p id="mDesc"></p>
     <input type="text" id="mInput" placeholder=""/>
+    <div id="mInput2Wrap" style="display:none">
+      <p style="font-size:.5rem;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px;margin-top:-8px" id="mInput2Label">API Key</p>
+      <input type="text" id="mInput2" placeholder=""/>
+    </div>
     <div class="ma">
       <button class="b-cancel" onclick="closeModal()">Cancel</button>
       <button class="b-save" onclick="saveKey()">Save</button>
@@ -471,10 +501,13 @@ const MCFG = {
        desc:'Apply at jambase.com/api — usually approved within a day. Best source for indie artists, small clubs, and regional venues.' },
   eb:{ title:'Eventbrite Private Token', placeholder:'Private Token', link:'https://www.eventbrite.com/platform/api',
        desc:'Get a free token at eventbrite.com/platform — instant. Great for DIY shows and self-promoted gigs.' },
-  sp:{ title:'Spotify Client ID', placeholder:'Client ID', link:'https://developer.spotify.com/dashboard',
-       desc:'Create a free app at developer.spotify.com. Used to match your top artists to shows along your route.' },
-  dz:{ title:'Deezer App ID', placeholder:'App ID', link:'https://developers.deezer.com/myapps',
-       desc:'Register a free app at developers.deezer.com. Imports your favorite artists and playlists to match with shows.' }
+  lf:{ title:'Connect Last.fm', placeholder:'API Key', label2:'Shared Secret', placeholder2:'Shared Secret',
+       link:'https://www.last.fm/api/account/create',
+       desc:'Create a free API account at last.fm/api/account/create — takes 30 seconds, no approval needed. Paste your <strong style="color:var(--text)">API Key</strong> and <strong style="color:var(--text)">Shared Secret</strong> below, then click Authorize. Your Last.fm password never touches RoadShow.' },
+  sp:{ title:'Connect Spotify', placeholder:'Spotify Client ID', link:'https://developer.spotify.com/dashboard',
+       desc:'Create a free app at <a href="https://developer.spotify.com/dashboard" target="_blank" style="color:var(--accent);text-decoration:none">developer.spotify.com/dashboard</a>. In the app settings add <strong style="color:var(--accent)">' + location.origin + '</strong> as a <strong>Redirect URI</strong>. Then paste your Client ID below.' },
+  dz:{ title:'Connect Deezer', placeholder:'Your Deezer ARL cookie', link:null,
+       desc:'Open <a href="https://www.deezer.com" target="_blank" style="color:var(--accent);text-decoration:none">deezer.com</a> while logged in, then open DevTools (F12) → Application → Cookies → www.deezer.com. Find the <strong style="color:var(--accent)">arl</strong> cookie and copy its full value (typically 192 characters).' }
 };
 
 const SRC_COLORS = { tm:'#60a5fa', jb:'#4ade80', eb:'#f97316' };
@@ -483,8 +516,10 @@ const SRC_LABELS = { tm:'Ticketmaster', jb:'Jambase', eb:'Eventbrite' };
 // ── State ──────────────────────────────────────────────────────────
 const state = {
   keys:{}, concerts:[], markers:[], route:null, cityMarkers:[],
-  modal:null, filters:new Set(['tm','jb','eb','demo']),
-  lastDiffDays: 0
+  modal:null, filters:new Set(['tm','jb','eb']),
+  lastDiffDays: 0,
+  spToken: null, spTokenExpiry: 0,
+  lfKey: null, lfSecret: null, lfSession: null, lfUser: null
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -511,7 +546,7 @@ const cache = {
 const sessionCache = new Map(); // cacheKey → {dateFrom, dateTo, allConcerts}
 
 function cacheKey(names, radius, keys) {
-  return JSON.stringify({ n:names.map(s=>s.toLowerCase().trim()), r:radius, tm:!!keys.tm, jb:!!keys.jb, eb:!!keys.eb });
+  return JSON.stringify({ n:names.map(s=>s.toLowerCase().trim()), r:radius, tm:!!keys.tm, jb:!!keys.jb, eb:!!keys.eb, lf:!!state.lfSession, dz:!!keys.dz });
 }
 
 function cacheDateCovers(df, dt) {
@@ -635,10 +670,22 @@ function openModal(svc) {
   state.modal = svc;
   const c = MCFG[svc];
   document.getElementById('mTitle').textContent = c.title;
-  document.getElementById('mDesc').innerHTML = c.desc +
-    ` <a href="${c.link}" target="_blank" style="color:var(--accent);text-decoration:none">Get key →</a>`;
-  document.getElementById('mInput').placeholder = c.placeholder;
-  document.getElementById('mInput').value = state.keys[svc] || '';
+  document.getElementById('mDesc').innerHTML = c.desc;
+  // Primary input
+  document.getElementById('mInput').style.display = '';
+  document.getElementById('mInput').placeholder = c.placeholder || '';
+  document.getElementById('mInput').value = svc === 'lf' ? (state.lfKey || '') : (state.keys[svc] || '');
+  // Second input (Last.fm Shared Secret only)
+  const wrap2 = document.getElementById('mInput2Wrap');
+  wrap2.style.display = svc === 'lf' ? '' : 'none';
+  document.getElementById('mInput2Label').textContent = c.label2 || 'API Key';
+  document.getElementById('mInput2').placeholder = c.placeholder2 || '';
+  document.getElementById('mInput2').value = svc === 'lf' ? (state.lfSecret || '') : '';
+  // Button label
+  document.querySelector('.b-save').textContent =
+    svc === 'lf' ? 'Authorize with Last.fm →' :
+    svc === 'sp' ? 'Authorize with Spotify →' :
+    'Save';
   document.getElementById('modalEl').classList.add('open');
   setTimeout(() => document.getElementById('mInput').focus(), 80);
 }
@@ -646,18 +693,33 @@ function closeModal() { document.getElementById('modalEl').classList.remove('ope
 function closeModalOutside(e) { if (e.target === document.getElementById('modalEl')) closeModal(); }
 
 function saveKey() {
-  const k = document.getElementById('mInput').value.trim();
   const s = state.modal;
+  // Spotify — save Client ID and start PKCE OAuth (page redirects to Spotify)
+  if (s === 'sp') {
+    const clientId = document.getElementById('mInput').value.trim();
+    closeModal();
+    if (clientId) { state.keys.sp = clientId; spotifyLogin(clientId); }
+    return;
+  }
+  // Last.fm — two-field OAuth redirect
+  if (s === 'lf') {
+    const key    = document.getElementById('mInput').value.trim();
+    const secret = document.getElementById('mInput2').value.trim();
+    if (key && secret) {
+      closeModal();
+      lfLogin(key, secret);  // redirects to Last.fm login page
+    } else {
+      closeModal();
+    }
+    return;
+  }
+  const k = document.getElementById('mInput').value.trim();
   if (k) {
     state.keys[s] = k;
-    document.getElementById('row-'+s).classList.add('on');
-    document.getElementById('row-'+s).classList.remove('dim');
     const notes = { tm:'Major shows · connected ✓', jb:'Indie venues · connected ✓',
-                    eb:'DIY shows · connected ✓', sp:'Artist matching · connected ✓', dz:'Favorites · connected ✓' };
-    document.getElementById('note-'+s).textContent = notes[s]||'Connected ✓';
-    const hdr = document.getElementById('hdr-'+s);
-    if (hdr) hdr.classList.remove('p-off');
-    clearCache();  // new source → need fresh fetch
+                    eb:'DIY shows · connected ✓', dz:'Favorite artists · connected ✓' };
+    activateSourceUI(s, notes[s] || 'Connected ✓');
+    clearCache();
   }
   closeModal();
 }
@@ -773,60 +835,415 @@ async function fetchEB(lat, lon, radius, df, dt, token) {
   } catch(e) { console.warn('EB error:', e); return []; }
 }
 
-// ── Demo data ──────────────────────────────────────────────────────
-function mockData(waypoints, df, dt) {
-  const artists = ['Zach Bryan','Tyler Childers','Boygenius','Hozier','Maggie Rogers',
-    'Lord Huron','Khruangbin','Leon Bridges','Jason Isbell','Sturgill Simpson',
-    'Brandi Carlile','Marcus King','Caamp','Gregory Alan Isakov','Watchhouse',
-    'Old Crow Medicine Show','The Avett Brothers','Waxahatchee','Adrianne Lenker','Phosphorescent',
-    'Turnpike Troubadours','Sierra Ferrell','Shakey Graves','Orville Peck','Amythyst Kiah'];
-  const venues = ['Ryman Auditorium','House of Blues','The Fillmore','Mercury Ballroom',
-    "Stubb's Amphitheater",'The Tabernacle','Terminal 5','9:30 Club','First Avenue','Thalia Hall',
-    'The Basement East','Exit/In','Cat\'s Cradle','The Bottleneck','Red Rocks Amphitheatre',
-    'The Bowery Ballroom','Music Hall of Williamsburg'];
-  const genres = ['Country','Folk','Indie Rock','Americana','Blues','Singer-Songwriter','Alt-Country','Bluegrass'];
-  const srcs = ['tm','jb','eb'];
-  const start = new Date(df), end = new Date(dt);
-  const days = Math.ceil((end-start)/86400000);
-  const out = [];
-  waypoints.forEach((wp,wi) => {
-    const n = 2+Math.floor(Math.random()*3);
-    for (let i=0;i<n;i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + Math.min(Math.floor((wi/waypoints.length)*days)+Math.floor(Math.random()*2), days));
-      d.setHours(18 + Math.floor(Math.random()*4), Math.random()>.5?0:30, 0);
-      out.push({
-        id:`demo-${wi}-${i}`, source: srcs[Math.floor(Math.random()*3)], _demo:true,
-        artist:  artists[Math.floor(Math.random()*artists.length)],
-        venue:   venues[Math.floor(Math.random()*venues.length)],
-        city:    nearestCity(wp.lat, wp.lon),
-        lat: wp.lat+(Math.random()-.5)*.35,
-        lon: wp.lon+(Math.random()-.5)*.35,
-        datetime: d.toISOString(),
-        ticketUrl: null,
-        genre: genres[Math.floor(Math.random()*genres.length)]
-      });
-    }
-  });
-  return out;
+// ── Spotify PKCE OAuth ─────────────────────────────────────────────
+function spRedirectUri() {
+  return window.location.origin + window.location.pathname;
 }
 
-function nearestCity(lat,lon) {
-  const C=[
-    {lat:36.17,lon:-86.78,n:'Nashville, TN'},{lat:35.15,lon:-90.05,n:'Memphis, TN'},
-    {lat:29.95,lon:-90.07,n:'New Orleans, LA'},{lat:33.75,lon:-84.39,n:'Atlanta, GA'},
-    {lat:30.27,lon:-97.74,n:'Austin, TX'},{lat:32.78,lon:-96.80,n:'Dallas, TX'},
-    {lat:29.76,lon:-95.37,n:'Houston, TX'},{lat:39.95,lon:-75.17,n:'Philadelphia, PA'},
-    {lat:40.71,lon:-74.00,n:'New York, NY'},{lat:42.36,lon:-71.06,n:'Boston, MA'},
-    {lat:41.88,lon:-87.63,n:'Chicago, IL'},{lat:44.98,lon:-93.27,n:'Minneapolis, MN'},
-    {lat:39.74,lon:-104.98,n:'Denver, CO'},{lat:47.61,lon:-122.33,n:'Seattle, WA'},
-    {lat:37.77,lon:-122.42,n:'San Francisco, CA'},{lat:34.05,lon:-118.24,n:'Los Angeles, CA'},
-    {lat:35.23,lon:-80.84,n:'Charlotte, NC'},{lat:38.63,lon:-90.20,n:'St. Louis, MO'},
-    {lat:36.85,lon:-75.98,n:'Virginia Beach, VA'},{lat:37.54,lon:-77.44,n:'Richmond, VA'},
-    {lat:32.08,lon:-81.09,n:'Savannah, GA'},{lat:28.54,lon:-81.38,n:'Orlando, FL'},
-    {lat:25.76,lon:-80.19,n:'Miami, FL'},{lat:38.90,lon:-77.04,n:'Washington, DC'}
-  ];
-  return C.reduce((b,c)=>hav(lat,lon,c.lat,c.lon)<hav(lat,lon,b.lat,b.lon)?c:b).n;
+function generateCodeVerifier() {
+  const arr = new Uint8Array(96);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function generateCodeChallenge(verifier) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function spotifyLogin(clientId) {
+  const verifier = generateCodeVerifier();
+  const challenge = await generateCodeChallenge(verifier);
+  sessionStorage.setItem('sp_verifier', verifier);
+  sessionStorage.setItem('sp_client_id', clientId);
+  const params = new URLSearchParams({
+    client_id: clientId,
+    response_type: 'code',
+    redirect_uri: spRedirectUri(),
+    scope: 'user-top-read',
+    code_challenge_method: 'S256',
+    code_challenge: challenge
+  });
+  window.location.href = 'https://accounts.spotify.com/authorize?' + params;
+}
+
+async function handleSpotifyCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const error = params.get('error');
+  // Remove auth params from URL regardless of outcome
+  if (code || error) window.history.replaceState({}, '', window.location.pathname);
+
+  if (error) {
+    console.warn('Spotify OAuth cancelled or denied:', error);
+    return;
+  }
+  if (!code) return;
+
+  const verifier  = sessionStorage.getItem('sp_verifier');
+  const clientId  = sessionStorage.getItem('sp_client_id');
+  sessionStorage.removeItem('sp_verifier');
+  sessionStorage.removeItem('sp_client_id');
+
+  if (!verifier || !clientId) {
+    console.error('Spotify callback: code_verifier or client_id missing from sessionStorage. Cannot exchange token.');
+    return;
+  }
+
+  let res;
+  try {
+    res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: spRedirectUri(),
+        client_id: clientId,
+        code_verifier: verifier
+      })
+    });
+  } catch (e) {
+    console.error('Spotify token exchange network error:', e.message);
+    return;
+  }
+
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    console.error(`Spotify token exchange failed — ${data.error}: ${data.error_description}`);
+    return;
+  }
+
+  state.keys.sp       = clientId;
+  state.spToken       = data.access_token;
+  state.spTokenExpiry = Date.now() + data.expires_in * 1000;
+  clearCache();
+  activateSourceUI('sp', 'Artist matching · connected ✓');
+  console.log(`✓ Spotify authorized (token valid for ${data.expires_in}s)`);
+}
+
+// ── Last.fm Web Auth (OAuth-style) ────────────────────────────────
+function lfRedirectUri() {
+  return window.location.origin + window.location.pathname;
+}
+
+// Compute Last.fm api_sig: sort params alphabetically, concatenate key+value, append secret, MD5
+function lfApiSig(params, secret) {
+  return md5(
+    Object.keys(params).sort().map(k => k + params[k]).join('') + secret
+  );
+}
+
+function lfLogin(apiKey, apiSecret) {
+  sessionStorage.setItem('lf_api_key', apiKey);
+  sessionStorage.setItem('lf_api_secret', apiSecret);
+  window.location.href =
+    `https://www.last.fm/api/auth/?api_key=${encodeURIComponent(apiKey)}&cb=${encodeURIComponent(lfRedirectUri())}`;
+}
+
+async function handleLastFmCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  if (!token) return;
+  window.history.replaceState({}, '', window.location.pathname);
+
+  const apiKey = sessionStorage.getItem('lf_api_key');
+  const secret  = sessionStorage.getItem('lf_api_secret');
+  sessionStorage.removeItem('lf_api_key');
+  sessionStorage.removeItem('lf_api_secret');
+
+  if (!apiKey || !secret) {
+    console.error('Last.fm callback: api_key or secret missing from sessionStorage.');
+    return;
+  }
+
+  const sigParams = { api_key: apiKey, method: 'auth.getSession', token };
+  const sig = lfApiSig(sigParams, secret);
+
+  let res;
+  try {
+    res = await fetch(
+      `https://ws.audioscrobbler.com/2.0/?method=auth.getSession` +
+      `&api_key=${encodeURIComponent(apiKey)}&token=${encodeURIComponent(token)}` +
+      `&api_sig=${sig}&format=json`
+    );
+  } catch(e) {
+    console.error('Last.fm session exchange network error:', e.message);
+    return;
+  }
+
+  let data;
+  try { data = await res.json(); }
+  catch { console.error('Last.fm session exchange returned non-JSON.'); return; }
+
+  if (data.error) {
+    console.error(`Last.fm auth.getSession error ${data.error}: ${data.message}`);
+    showEmpty(
+      `Last.fm authorization failed (error ${data.error}: ${esc(data.message)}).<br>` +
+      'Click the Last.fm "Connect" button and try again.'
+    );
+    return;
+  }
+
+  state.lfKey     = apiKey;
+  state.lfSecret  = secret;
+  state.lfSession = data.session.key;
+  state.lfUser    = data.session.name;
+  clearCache();
+  activateSourceUI('lf', `${esc(state.lfUser)} · connected ✓`);
+  console.log(`✓ Last.fm authorized for ${state.lfUser}`);
+}
+
+function activateSourceUI(svc, note) {
+  document.getElementById('row-'+svc).classList.add('on');
+  document.getElementById('row-'+svc).classList.remove('dim');
+  document.getElementById('note-'+svc).textContent = note;
+  const hdr = document.getElementById('hdr-'+svc);
+  if (hdr) hdr.classList.remove('p-off');
+}
+
+// ── API: Spotify top artists ───────────────────────────────────────
+async function fetchSpotifyArtists() {
+  if (!state.spToken) {
+    throw new Error(
+      'No Spotify access token found. ' +
+      'Click the Spotify "Connect" button, enter your Client ID, and authorize with Spotify.'
+    );
+  }
+  if (Date.now() >= state.spTokenExpiry) {
+    state.spToken = null;
+    activateSourceUI('sp', 'Artist matching · token expired');
+    throw new Error(
+      'Your Spotify access token has expired (tokens last 1 hour). ' +
+      'Click the Spotify "Connect" button and re-authorize to get a fresh token.'
+    );
+  }
+
+  let res;
+  try {
+    res = await fetch('https://api.spotify.com/v1/me/top/artists?limit=50&time_range=medium_term', {
+      headers: { 'Authorization': 'Bearer ' + state.spToken }
+    });
+  } catch (e) {
+    throw new Error(
+      'Network error reaching Spotify: ' + e.message + '. ' +
+      'Check your internet connection and that no browser extension is blocking api.spotify.com.'
+    );
+  }
+
+  if (res.status === 401) {
+    state.spToken = null;
+    throw new Error(
+      'Spotify rejected the token with 401 Unauthorized — it may have been revoked. ' +
+      'Click the Spotify "Connect" button and re-authorize.'
+    );
+  }
+  if (res.status === 403) {
+    throw new Error(
+      'Spotify returned 403 Forbidden. ' +
+      'The authorized app is missing the user-top-read scope. ' +
+      'Re-authorize: the scope is requested automatically during the login redirect.'
+    );
+  }
+  if (res.status === 429) {
+    const retryAfter = res.headers.get('Retry-After') || 'a few';
+    throw new Error(`Spotify rate limit reached (429). Wait ${retryAfter} seconds and try again.`);
+  }
+  if (!res.ok) {
+    throw new Error(
+      `Spotify returned an unexpected HTTP ${res.status} ${res.statusText}. ` +
+      'This may indicate a Spotify API outage. Check status.spotify.com.'
+    );
+  }
+
+  let d;
+  try { d = await res.json(); }
+  catch { throw new Error('Spotify returned a non-JSON response. The API may be temporarily unavailable.'); }
+
+  if (d.error) {
+    throw new Error(`Spotify API error ${d.error.status}: ${d.error.message}.`);
+  }
+
+  const artists = (d.items || []).map(a => a.name);
+  if (artists.length === 0) {
+    throw new Error(
+      'Spotify returned 0 top artists. ' +
+      'This happens when the account has little or no listening history on Spotify.'
+    );
+  }
+  return artists;
+}
+
+// ── API: Deezer favorite artists (via Netlify proxy → Deezer internal API) ──
+async function fetchDeezerArtists(arl) {
+  // /deezer-proxy is a Netlify Function that forwards requests to
+  // deezer.com/ajax/gw-light.php with the ARL injected as a Cookie server-side.
+  const GW = '/deezer-proxy';
+  const ARL_HEADER = { 'X-Deezer-ARL': arl };
+
+  // ── Step 1: getUserData to obtain the session api_token (checkForm) ──
+  let initRes;
+  try {
+    initRes = await fetch(
+      `${GW}?method=deezer.getUserData&input=3&api_version=1.0&api_token=null`,
+      { method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8', ...ARL_HEADER },
+        body: '{}' }
+    );
+  } catch (e) {
+    throw new Error('Network error reaching Deezer proxy: ' + e.message);
+  }
+
+  if (!initRes.ok) {
+    throw new Error(
+      `Deezer internal API returned HTTP ${initRes.status} ${initRes.statusText} on getUserData. ` +
+      'The internal endpoint may have moved or Deezer may be down.'
+    );
+  }
+
+  let userData;
+  try { userData = await initRes.json(); }
+  catch {
+    throw new Error(
+      'Deezer returned a non-JSON response to getUserData. ' +
+      'You may not be logged into deezer.com in this browser, or the page returned an HTML error.'
+    );
+  }
+
+  if (userData.error && Object.keys(userData.error).length > 0) {
+    throw new Error(
+      `Deezer API error on getUserData: ${JSON.stringify(userData.error)}. ` +
+      'Your ARL may be expired. Open deezer.com, log out and back in, then copy a fresh ARL from DevTools → Application → Cookies.'
+    );
+  }
+
+  const userId = userData.results?.USER?.USER_ID;
+  if (!userId || userId === 0) {
+    throw new Error(
+      'Deezer returned a guest session (USER_ID = 0). ' +
+      'This means the browser is not authenticated as your account. ' +
+      `The ARL you provided starts with "${arl.slice(0, 10)}..." — ` +
+      'verify it is copied in full from DevTools (it is typically 192 characters long). ' +
+      'Also confirm you are currently logged into deezer.com in this same browser tab.'
+    );
+  }
+
+  const apiToken = userData.results?.checkForm;
+  if (!apiToken) {
+    throw new Error(
+      'Deezer did not return a session api_token (checkForm field missing). ' +
+      'Raw results preview: ' + JSON.stringify(userData.results).slice(0, 300)
+    );
+  }
+
+  console.log(`✓ Deezer session established for user ${userId}`);
+
+  // ── Step 2: Fetch user's favorite artists ──
+  let artistsRes;
+  try {
+    artistsRes = await fetch(
+      `${GW}?method=user.getArtists&input=3&api_version=1.0&api_token=${encodeURIComponent(apiToken)}&nb=500&start=0`,
+      { method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8', ...ARL_HEADER },
+        body: '{}' }
+    );
+  } catch (e) {
+    throw new Error('Network error fetching Deezer artists: ' + e.message);
+  }
+
+  if (!artistsRes.ok) {
+    throw new Error(
+      `Deezer returned HTTP ${artistsRes.status} ${artistsRes.statusText} on user.getArtists.`
+    );
+  }
+
+  let artistsData;
+  try { artistsData = await artistsRes.json(); }
+  catch {
+    throw new Error('Deezer returned non-JSON on user.getArtists. The API may be temporarily unavailable.');
+  }
+
+  if (artistsData.error && Object.keys(artistsData.error).length > 0) {
+    throw new Error(
+      `Deezer API error on user.getArtists: ${JSON.stringify(artistsData.error)}.`
+    );
+  }
+
+  const artists = (artistsData.results?.data || []).map(a => a.ART_NAME).filter(Boolean);
+  if (artists.length === 0) {
+    throw new Error(
+      'Deezer returned 0 favorite artists for this account. ' +
+      'Open deezer.com, go to your profile → Favorites → Artists and make sure you have artists saved.'
+    );
+  }
+  return artists;
+}
+
+// ── API: Last.fm top artists (uses OAuth session from state) ───────
+async function fetchLastFmArtists() {
+  if (!state.lfSession || !state.lfUser || !state.lfKey) {
+    throw new Error(
+      'Not connected to Last.fm. Click the Last.fm "Connect" button, enter your API Key and Shared Secret, then authorize on Last.fm\'s site.'
+    );
+  }
+
+  // Build authenticated request with api_sig so it works even for private profiles
+  const method = 'user.getTopArtists';
+  const sigParams = {
+    api_key: state.lfKey, limit: '200', method,
+    period: 'overall', sk: state.lfSession, user: state.lfUser
+  };
+  const sig = lfApiSig(sigParams, state.lfSecret);
+  const url = `https://ws.audioscrobbler.com/2.0/?method=${method}` +
+    `&user=${encodeURIComponent(state.lfUser)}&api_key=${encodeURIComponent(state.lfKey)}` +
+    `&sk=${encodeURIComponent(state.lfSession)}&limit=200&period=overall` +
+    `&api_sig=${sig}&format=json`;
+
+  let res;
+  try {
+    res = await fetch(url);
+  } catch(e) {
+    throw new Error(
+      'Network error reaching Last.fm: ' + e.message +
+      '. Check your internet connection and that ws.audioscrobbler.com is reachable.'
+    );
+  }
+
+  let d;
+  try { d = await res.json(); }
+  catch { throw new Error('Last.fm returned a non-JSON response. The service may be temporarily unavailable.'); }
+
+  if (d.error) {
+    const known = {
+      4:  'Last.fm session has expired or been revoked. Click "Connect" to re-authorize.',
+      6:  `Last.fm user "${esc(state.lfUser)}" not found — this shouldn\'t happen after OAuth. Try re-authorizing.`,
+      9:  'Last.fm session expired. Click the Last.fm "Connect" button to re-authorize.',
+      10: 'Invalid Last.fm API key. Double-check the key at last.fm/api/accounts.',
+      26: 'This Last.fm API key has been suspended. Check your API account at last.fm/api/accounts.',
+      29: 'Last.fm rate limit exceeded. Wait a moment and try again.',
+    };
+    throw new Error(known[d.error] || `Last.fm API error ${d.error}: ${d.message}`);
+  }
+
+  const artists = (d.topartists?.artist || []).map(a => a.name).filter(Boolean);
+  if (artists.length === 0) {
+    throw new Error(
+      `Last.fm returned 0 top artists for "${esc(state.lfUser)}". ` +
+      'Scrobble some tracks to build your listening history, or check your privacy settings at last.fm/settings/privacy.'
+    );
+  }
+  return artists;
+}
+
+// ── Artist matching helper ─────────────────────────────────────────
+function artistMatchesSet(concertArtist, likedSet) {
+  const ca = concertArtist.toLowerCase().trim();
+  for (const la of likedSet) {
+    if (ca.includes(la) || la.includes(ca)) return true;
+  }
+  return false;
 }
 
 function dedupe(arr) {
@@ -944,25 +1361,73 @@ async function searchConcerts() {
     return;
   }
 
+  // ── Step 3: Last.fm / Deezer → build liked-artist set ──
+  let likedArtists = new Set();
+  if (state.lfSession || state.keys.dz) {
+    showEmpty('Fetching your artists from Last.fm / Deezer...');
+
+    const [lfResult, dzResult] = await Promise.all([
+      state.lfSession
+        ? fetchLastFmArtists().then(a => ({ ok: true, artists: a })).catch(e => ({ ok: false, svc: 'Last.fm', msg: e.message }))
+        : Promise.resolve({ ok: true, artists: [] }),
+      state.keys.dz
+        ? fetchDeezerArtists(state.keys.dz).then(a => ({ ok: true, artists: a })).catch(e => ({ ok: false, svc: 'Deezer', msg: e.message }))
+        : Promise.resolve({ ok: true, artists: [] })
+    ]);
+
+    const errors = [];
+    if (!lfResult.ok) { console.error('Last.fm:', lfResult.msg); errors.push({ svc: lfResult.svc, msg: lfResult.msg }); }
+    if (!dzResult.ok) { console.error('Deezer:', dzResult.msg); errors.push({ svc: dzResult.svc, msg: dzResult.msg }); }
+
+    const lfArtists = lfResult.ok ? lfResult.artists : [];
+    const dzArtists = dzResult.ok ? dzResult.artists : [];
+    [...lfArtists, ...dzArtists].forEach(a => likedArtists.add(a.toLowerCase().trim()));
+    console.log(`✓ Liked artists: ${likedArtists.size} (${lfArtists.length} Last.fm + ${dzArtists.length} Deezer)`);
+
+    if (likedArtists.size === 0) {
+      // All connected music services failed — show each error prominently
+      const html = errors.map(e =>
+        `<div style="text-align:left;background:rgba(255,92,56,.07);border:1px solid rgba(255,92,56,.25);` +
+        `border-radius:4px;padding:10px 12px;margin-bottom:8px;font-size:.56rem;line-height:1.8;color:var(--text2)">` +
+        `<strong style="color:var(--accent2);display:block;margin-bottom:4px">${esc(e.svc)} — connection failed</strong>` +
+        esc(e.msg) + '</div>'
+      ).join('');
+      document.getElementById('resultsScroll').innerHTML =
+        `<div style="padding:16px">${html}</div>`;
+      btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return;
+    }
+
+    if (errors.length > 0) {
+      // Partial success — log which service failed but continue with what we have
+      errors.forEach(e => console.warn(`⚠ ${e.svc} failed (continuing with other service):`, e.msg));
+    }
+  }
+
+  if (!state.keys.tm && !state.keys.jb && !state.keys.eb) {
+    showEmpty('Connect at least one concert source — Ticketmaster, Jambase, or Eventbrite — to find shows.');
+    btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return;
+  }
+
   setLB(45); showEmpty('Fetching concerts...');
-  console.log('▶ Step 3: Fetching | Keys:', {tm:!!state.keys.tm,jb:!!state.keys.jb,eb:!!state.keys.eb});
+  console.log('▶ Step 4: Fetching | Keys:', {tm:!!state.keys.tm,jb:!!state.keys.jb,eb:!!state.keys.eb,lf:!!state.lfSession});
   console.log('  Waypoints:', waypoints.length, '| Radius:', rad, 'mi | Dates:', df, '→', dt);
 
   let concerts = [];
   try {
-    if (state.keys.tm || state.keys.jb || state.keys.eb) {
-      const batches = await Promise.all(
-        waypoints.flatMap(wp => [
-          state.keys.tm ? fetchTM(wp.lat,wp.lon,rad,df,dt,state.keys.tm) : Promise.resolve([]),
-          state.keys.jb ? fetchJB(wp.lat,wp.lon,rad,df,dt,state.keys.jb) : Promise.resolve([]),
-          state.keys.eb ? fetchEB(wp.lat,wp.lon,rad,df,dt,state.keys.eb) : Promise.resolve([])
-        ])
-      );
-      concerts = dedupe(batches.flat());
-      console.log('✓ API results:', concerts.length, 'shows after dedup');
-    } else {
-      console.log('  No keys — using demo data');
-      concerts = mockData(waypoints, df, dt);
+    const batches = await Promise.all(
+      waypoints.flatMap(wp => [
+        state.keys.tm ? fetchTM(wp.lat,wp.lon,rad,df,dt,state.keys.tm) : Promise.resolve([]),
+        state.keys.jb ? fetchJB(wp.lat,wp.lon,rad,df,dt,state.keys.jb) : Promise.resolve([]),
+        state.keys.eb ? fetchEB(wp.lat,wp.lon,rad,df,dt,state.keys.eb) : Promise.resolve([])
+      ])
+    );
+    concerts = dedupe(batches.flat());
+    console.log('✓ API results:', concerts.length, 'shows after dedup');
+
+    // Filter to liked artists when Spotify/Deezer is connected
+    if (likedArtists.size > 0) {
+      concerts = concerts.filter(c => artistMatchesSet(c.artist || '', likedArtists));
+      console.log(`✓ After artist filter: ${concerts.length} shows match your taste`);
     }
   } catch(err) {
     console.error('✗ Concert fetch error:', err);
@@ -1029,7 +1494,7 @@ function safeUrl(u) {
 // ── Popup ──────────────────────────────────────────────────────────
 function mkPopup(c) {
   const {date,time} = fmtDt(c.datetime);
-  const sl = SRC_LABELS[c.source] || 'Demo';
+  const sl = SRC_LABELS[c.source] || c.source;
   return `<div style="font-family:'DM Mono',monospace;font-size:.68rem;min-width:155px;line-height:1.7">
     <strong style="font-size:.82rem;display:block;margin-bottom:2px">${esc(c.artist)}</strong>
     ${esc(c.venue)}<br><span style="color:#aaa">${esc(c.city)}</span><br>
@@ -1041,7 +1506,6 @@ function mkPopup(c) {
 
 // ── Render results ─────────────────────────────────────────────────
 function renderResults(concerts) {
-  const isDemo = concerts.some(c=>c._demo);
   document.getElementById('rctrlBar').style.display = concerts.length ? 'flex' : 'none';
   document.getElementById('rcLabel').textContent = concerts.length
     ? `${concerts.length} show${concerts.length!==1?'s':''} found`
@@ -1052,17 +1516,12 @@ function renderResults(concerts) {
     return;
   }
 
-  let html = '';
-  if (isDemo) html += '<div class="demo-note">⚡ Demo mode — connect API keys for real shows.</div>';
-  html += '<div id="cList"></div>';
-  document.getElementById('resultsScroll').innerHTML = html;
+  document.getElementById('resultsScroll').innerHTML = '<div id="cList"></div>';
   renderList(concerts);
 }
 
 function renderList(concerts) {
-  const filtered = concerts.filter(c =>
-    state.filters.has(c.source) || (c._demo && state.filters.has('demo'))
-  );
+  const filtered = concerts.filter(c => state.filters.has(c.source));
   document.getElementById('cList').innerHTML = filtered.map((c,i) => mkCard(c,i)).join('');
   const vis = document.getElementById('stVisible');
   if (vis) vis.textContent = filtered.length;
@@ -1072,7 +1531,6 @@ function toggleFilter(src) {
   const btn = document.getElementById('flt-'+src);
   if (state.filters.has(src)) { state.filters.delete(src); btn.className='fb'; }
   else { state.filters.add(src); btn.className=`fb f-${src}`; }
-  state.filters.add('demo');
   renderList(state.concerts);
 }
 
@@ -1088,10 +1546,10 @@ function sortBy(m) {
 
 function mkCard(c,i) {
   const {date,time} = fmtDt(c.datetime);
-  const stc = {tm:'t-tm',jb:'t-jb',eb:'t-eb'}[c.source]||'t-demo';
-  const slb = SRC_LABELS[c.source]||'Demo';
+  const stc = {tm:'t-tm',jb:'t-jb',eb:'t-eb'}[c.source]||'t-gen';
+  const slb = SRC_LABELS[c.source]||c.source;
   const hq  = encodeURIComponent(`hotels near ${c.venue} ${c.city}`);
-  return `<div class="cc s-${c._demo?'demo':c.source}" style="animation-delay:${i*18}ms" onclick="zoomTo(${c.lat},${c.lon})">
+  return `<div class="cc s-${c.source}" style="animation-delay:${i*18}ms" onclick="zoomTo(${c.lat},${c.lon})">
     <div class="ct">
       <div class="an">${esc(c.artist)}</div>
       <div class="cd">${date}<br>${time}</div>
@@ -1116,6 +1574,10 @@ function zoomTo(lat, lon) {
   if (!lat||!lon||isNaN(lat)||isNaN(lon)) return;
   map.setView([lat,lon], 13, {animate:true});
 }
+
+// ── Handle OAuth returns on page load ─────────────────────────────
+handleSpotifyCallback();
+handleLastFmCallback();
 
 </script>
 </body>

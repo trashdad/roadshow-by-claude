@@ -1,0 +1,11 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# Route Deezer proxy requests to the serverless function.
+# The function handles the ARL cookie server-side, bypassing CORS.
+[[redirects]]
+  from = "/deezer-proxy"
+  to = "/.netlify/functions/deezer-proxy"
+  status = 200
+  force = true
