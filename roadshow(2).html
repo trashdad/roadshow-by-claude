@@ -506,6 +506,9 @@ const cache = {
   geoPoints: null,
   names: null
 };
+// Session-wide store: keeps every fetched result set for the lifetime of the page
+// so that changing route/dates and reverting never re-hits the APIs.
+const sessionCache = new Map(); // cacheKey → {dateFrom, dateTo, allConcerts}
 
 function cacheKey(names, radius, keys) {
   return JSON.stringify({ n:names.map(s=>s.toLowerCase().trim()), r:radius, tm:!!keys.tm, jb:!!keys.jb, eb:!!keys.eb });
@@ -539,6 +542,7 @@ function clearCache() {
   cache.key = null; cache.dateFrom = null; cache.dateTo = null;
   cache.allConcerts = []; cache.hits = 0;
   cache.routeGeo = null; cache.geoPoints = null; cache.names = null;
+  sessionCache.clear();
   updateCacheUI();
   console.log('🗑 Cache cleared');
 }
@@ -571,7 +575,7 @@ function updateTripDays() {
   const de = document.getElementById('dateEnd').value;
   const el = document.getElementById('tripDays');
   if (ds && de) {
-    const diff = Math.ceil((new Date(de) - new Date(ds)) / 86400000);
+    const diff = Math.ceil((new Date(de+'T00:00:00') - new Date(ds+'T00:00:00')) / 86400000);
     if (diff > 0)      el.innerHTML = `${diff} day${diff!==1?'s':''} on the road`;
     else if (diff===0) el.innerHTML = 'Same-day trip';
     else               el.innerHTML = '<span style="color:var(--accent2)">End date must be after start</span>';
@@ -584,7 +588,11 @@ document.querySelectorAll('input[type=text],input[type=date]')
   .forEach(el => el.addEventListener('keydown', e => { if(e.key==='Enter') searchConcerts(); }));
 
 // ── Utilities ──────────────────────────────────────────────────────
-function fd(d) { return d.toISOString().split('T')[0]; }
+function fd(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
 
 function fmtDt(iso) {
   if (!iso) return { date:'TBA', time:'' };
@@ -843,14 +851,14 @@ async function searchConcerts() {
 
   if (!sc||!ec) { alert('Please enter a start and end city.'); return; }
   if (!ds||!de) { alert('Please select Start Driving and End Trip dates.'); return; }
-  const diffDays = Math.ceil((new Date(de) - new Date(ds)) / 86400000);
+  const diffDays = Math.ceil((new Date(de+'T00:00:00') - new Date(ds+'T00:00:00')) / 86400000);
   if (diffDays < 0) { alert('End Trip date must be after Start Driving date.'); return; }
   state.lastDiffDays = diffDays;
 
   const buf = parseInt(document.getElementById('bufferSlider').value);
   const rad = parseInt(document.getElementById('radiusSlider').value);
-  const dfD = new Date(ds); dfD.setDate(dfD.getDate()-buf);
-  const dtD = new Date(de); dtD.setDate(dtD.getDate()+buf);
+  const dfD = new Date(ds+'T00:00:00'); dfD.setDate(dfD.getDate()-buf);
+  const dtD = new Date(de+'T00:00:00'); dtD.setDate(dtD.getDate()+buf);
   const df = fd(dfD), dt = fd(dtD);
 
   const names = [sc, ...st.split(',').map(s=>s.trim()).filter(Boolean), ec];
@@ -897,7 +905,8 @@ async function searchConcerts() {
     state.route = L.geoJSON(route.geo, {
       style:{color:'#e8c547',weight:3,opacity:.65,dashArray:'6,4'}
     }).addTo(map);
-    const nWp = Math.min(10, Math.max(5, Math.floor(route.dist/70000)));
+    const radM = rad * 1609;
+    const nWp = Math.min(8, Math.max(2, Math.ceil(route.dist / (radM * 1.75))));
     waypoints = sampleRoute(route.geo, nWp);
     document.getElementById('stDist').textContent = Math.round(route.dist/1609).toLocaleString()+' mi';
     map.fitBounds(state.route.getBounds(), {padding:[50,50]});
@@ -913,9 +922,27 @@ async function searchConcerts() {
     const col = i===0?'#4ade80':i===geo.length-1?'#ff5c38':'#e8c547';
     const r = i===0||i===geo.length-1 ? 9 : 7;
     const m = L.circleMarker([p.lat,p.lon],{radius:r,fillColor:col,color:'#0a0a0a',weight:2,fillOpacity:1})
-     .addTo(map).bindPopup(`<b style="font-family:monospace">${names[i]}</b>`);
+     .addTo(map).bindPopup(`<b style="font-family:monospace">${esc(names[i])}</b>`);
     state.cityMarkers.push(m);
   });
+
+  // ── SESSION CACHE HIT: same route/radius/keys fetched before this session ──
+  const scEntry = sessionCache.get(ck);
+  if (scEntry && df >= scEntry.dateFrom && dt <= scEntry.dateTo) {
+    cache.key = ck; cache.dateFrom = scEntry.dateFrom; cache.dateTo = scEntry.dateTo;
+    cache.allConcerts = scEntry.allConcerts; cache.hits = (cache.hits||0) + 1;
+    console.log(`⚡ Session cache hit — filtering ${scEntry.allConcerts.length} cached → ${df}…${dt}`);
+    const concerts = filterByDate(scEntry.allConcerts, df, dt);
+    state.concerts = concerts;
+    clearConcertMarkers();
+    addConcertMarkers(concerts);
+    updateStatsOverlay(concerts, diffDays);
+    updateCacheUI();
+    setLB(100); renderResults(concerts);
+    setTimeout(()=>setLB(0), 600);
+    btn.disabled=false; btn.textContent='⟶ Find Shows';
+    return;
+  }
 
   setLB(45); showEmpty('Fetching concerts...');
   console.log('▶ Step 3: Fetching | Keys:', {tm:!!state.keys.tm,jb:!!state.keys.jb,eb:!!state.keys.eb});
@@ -949,6 +976,7 @@ async function searchConcerts() {
   cache.dateTo = dt;
   cache.allConcerts = concerts;
   cache.hits = 0;
+  sessionCache.set(ck, { dateFrom: df, dateTo: dt, allConcerts: concerts });
   updateCacheUI();
   console.log(`💾 Cached ${concerts.length} shows for ${df}→${dt}`);
 
@@ -990,16 +1018,24 @@ function updateStatsOverlay(concerts, diffDays) {
   document.getElementById('mapOv').style.display = 'block';
 }
 
+// ── XSS helpers ────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function safeUrl(u) {
+  return typeof u === 'string' && /^https?:\/\//i.test(u) ? u : null;
+}
+
 // ── Popup ──────────────────────────────────────────────────────────
 function mkPopup(c) {
   const {date,time} = fmtDt(c.datetime);
   const sl = SRC_LABELS[c.source] || 'Demo';
   return `<div style="font-family:'DM Mono',monospace;font-size:.68rem;min-width:155px;line-height:1.7">
-    <strong style="font-size:.82rem;display:block;margin-bottom:2px">${c.artist}</strong>
-    ${c.venue}<br><span style="color:#aaa">${c.city}</span><br>
+    <strong style="font-size:.82rem;display:block;margin-bottom:2px">${esc(c.artist)}</strong>
+    ${esc(c.venue)}<br><span style="color:#aaa">${esc(c.city)}</span><br>
     <span style="color:#e8c547">${date} · ${time}</span><br>
-    <span style="color:#555;font-size:.58rem">${sl}${c.genre?' · '+c.genre:''}</span>
-    ${c.ticketUrl?`<br><a href="${c.ticketUrl}" target="_blank" style="color:#ff5c38;text-decoration:none;display:inline-block;margin-top:3px">🎟 Tickets</a>`:''}
+    <span style="color:#555;font-size:.58rem">${sl}${c.genre?' · '+esc(c.genre):''}</span>
+    ${safeUrl(c.ticketUrl)?`<br><a href="${esc(c.ticketUrl)}" target="_blank" style="color:#ff5c38;text-decoration:none;display:inline-block;margin-top:3px">🎟 Tickets</a>`:''}
   </div>`;
 }
 
@@ -1057,18 +1093,18 @@ function mkCard(c,i) {
   const hq  = encodeURIComponent(`hotels near ${c.venue} ${c.city}`);
   return `<div class="cc s-${c._demo?'demo':c.source}" style="animation-delay:${i*18}ms" onclick="zoomTo(${c.lat},${c.lon})">
     <div class="ct">
-      <div class="an">${c.artist}</div>
+      <div class="an">${esc(c.artist)}</div>
       <div class="cd">${date}<br>${time}</div>
     </div>
-    <div class="vn">${c.venue}</div>
+    <div class="vn">${esc(c.venue)}</div>
     <div class="ctags">
-      <span class="tag t-city">${c.city}</span>
+      <span class="tag t-city">${esc(c.city)}</span>
       <span class="tag ${stc}">${slb}</span>
-      ${c.genre?`<span class="tag t-gen">${c.genre}</span>`:''}
+      ${c.genre?`<span class="tag t-gen">${esc(c.genre)}</span>`:''}
     </div>
     <div class="ca">
-      ${c.ticketUrl
-        ?`<a href="${c.ticketUrl}" target="_blank" class="bs b-tk" onclick="event.stopPropagation()">🎟 Tickets</a>`
+      ${safeUrl(c.ticketUrl)
+        ?`<a href="${esc(c.ticketUrl)}" target="_blank" class="bs b-tk" onclick="event.stopPropagation()">🎟 Tickets</a>`
         :`<span class="bs b-gh" style="opacity:.35;cursor:default">🎟 No link</span>`}
       <button class="bs b-gh" onclick="event.stopPropagation();zoomTo(${c.lat},${c.lon})">📍 Map</button>
       <a href="https://www.google.com/maps/search/${hq}" target="_blank" class="bs b-gh" onclick="event.stopPropagation()">🏨 Hotels</a>
