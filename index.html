@@ -269,6 +269,43 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
 .stop-rm-btn{color:var(--text3);}
 .stop-rm-btn:hover{border-color:var(--accent2);color:var(--accent2);}
 @keyframes stopSlideIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+
+/* ─── Search log (left panel, below Find Shows) ─── */
+#searchLog{display:none;margin-top:8px;background:rgba(8,8,8,.95);border:1px solid var(--border);
+  border-radius:var(--r);max-height:150px;overflow-y:auto;font-family:'DM Mono',monospace;}
+#searchLog::-webkit-scrollbar{width:3px;}
+#searchLog::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.log-hdr{font-size:.42rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);
+  padding:5px 9px 4px;border-bottom:1px solid rgba(255,255,255,.05);}
+.log-body{padding:3px 6px 5px;}
+.log-line{display:flex;gap:7px;align-items:baseline;padding:1px 0;line-height:1.6;}
+.log-ts{font-size:.4rem;color:var(--text3);opacity:.35;flex-shrink:0;letter-spacing:.02em;}
+.log-ok{color:#4ade80;font-size:.5rem;} .log-err{color:var(--accent2);font-size:.5rem;}
+.log-warn{color:var(--accent);font-size:.5rem;} .log-info{color:var(--text2);font-size:.5rem;}
+
+/* ─── Artist summary (middle panel, above results scroll) ─── */
+#artistSummary{flex-shrink:0;border-bottom:1px solid var(--border);overflow:hidden;
+  max-height:0;transition:max-height .3s ease;}
+#artistSummary.open{max-height:220px;}
+.as-toggle{display:flex;align-items:center;justify-content:space-between;padding:5px 12px 4px;
+  cursor:pointer;user-select:none;background:transparent;border:none;border-bottom:1px solid transparent;
+  width:100%;text-align:left;transition:background .15s;}
+.as-toggle:hover{background:rgba(255,255,255,.02);}
+.as-toggle.open{border-bottom-color:rgba(255,255,255,.05);}
+.as-label{font-family:'DM Mono',monospace;font-size:.46rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);}
+.as-caret{font-size:.45rem;color:var(--text3);transition:transform .2s;line-height:1;padding-left:6px;}
+.as-inner{overflow-y:auto;max-height:175px;padding:8px 12px 10px;}
+.as-inner::-webkit-scrollbar{width:3px;}
+.as-inner::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.as-svc{margin-bottom:7px;}.as-svc:last-child{margin-bottom:0;}
+.as-svc-name{font-family:'DM Mono',monospace;font-size:.44rem;letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:4px;}
+.as-sp .as-svc-name{color:#1db954;} .as-lf .as-svc-name{color:#d51007;} .as-dz .as-svc-name{color:#ff6b9d;}
+.artist-chip{display:inline-block;font-family:'DM Mono',monospace;font-size:.48rem;padding:2px 7px;
+  border-radius:10px;margin:2px 2px;border:1px solid;line-height:1.5;white-space:nowrap;}
+.chip-sp{color:#1db954;border-color:rgba(29,185,84,.3);background:rgba(29,185,84,.06);}
+.chip-lf{color:#d51007;border-color:rgba(213,16,7,.3);background:rgba(213,16,7,.06);}
+.chip-dz{color:#ff6b9d;border-color:rgba(255,107,157,.3);background:rgba(255,107,157,.06);}
 </style>
 </head>
 <body>
@@ -380,6 +417,7 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
 
     <div class="ss" style="border-bottom:none;">
       <button class="search-btn" id="searchBtn" onclick="searchConcerts()">⟶ Find Shows</button>
+      <div id="searchLog"></div>
     </div>
   </div>
 
@@ -406,6 +444,7 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
       <div class="cache-text" id="cacheText">Cached</div>
       <button class="cache-clear" onclick="clearCache()">Clear Cache</button>
     </div>
+    <div id="artistSummary"></div>
     <div class="results-scroll" id="resultsScroll">
       <div class="empty">
         <div class="ei">🎸</div>
@@ -1481,6 +1520,71 @@ function dedupe(arr) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// ── Search log (left panel) ────────────────────────────────────────
+function searchLog(msg, type = 'info') {
+  const el = document.getElementById('searchLog');
+  if (!el) return;
+  el.style.display = 'block';
+  let body = el.querySelector('.log-body');
+  if (!body) {
+    el.innerHTML = '<div class="log-hdr">Search Log</div><div class="log-body"></div>';
+    body = el.querySelector('.log-body');
+  }
+  const now = new Date();
+  const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  const cls = type === 'ok' ? 'log-ok' : type === 'err' ? 'log-err' : type === 'warn' ? 'log-warn' : 'log-info';
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-ts">${ts}</span><span class="${cls}">${esc(msg)}</span>`;
+  body.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearSearchLog() {
+  const el = document.getElementById('searchLog');
+  if (el) { el.innerHTML = ''; el.style.display = 'none'; }
+}
+
+// ── Artist summary (middle panel, above results) ───────────────────
+function renderArtistSummary(spArtists, lfArtists, dzArtists, errors) {
+  const panel = document.getElementById('artistSummary');
+  if (!panel) return;
+  const connected = [
+    { key: 'sp', label: '🎵 Spotify', artists: spArtists, chipCls: 'chip-sp', divCls: 'as-sp', active: !!state.spToken },
+    { key: 'lf', label: '◎ Last.fm',  artists: lfArtists, chipCls: 'chip-lf', divCls: 'as-lf', active: !!state.lfSession },
+    { key: 'dz', label: '🎧 Deezer',  artists: dzArtists, chipCls: 'chip-dz', divCls: 'as-dz', active: !!state.keys.dz },
+  ].filter(s => s.active);
+  if (!connected.length) { panel.innerHTML = ''; panel.className = ''; return; }
+
+  const errMap = {};
+  errors.forEach(e => { errMap[e.svc] = e.msg; });
+  const total = spArtists.length + lfArtists.length + dzArtists.length;
+  const summary = connected.map(s => s.artists.length ? `${s.label.split(' ')[1]} ${s.artists.length}` : '').filter(Boolean).join(' · ') || 'none';
+
+  const blocks = connected.map(s => {
+    const err = errMap[s.key === 'sp' ? 'Spotify' : s.key === 'lf' ? 'Last.fm' : 'Deezer'];
+    if (err) return `<div class="as-svc ${s.divCls}">
+      <div class="as-svc-name">${s.label} <span style="color:var(--accent2);font-weight:normal">— error</span></div>
+      <div style="font-size:.46rem;color:var(--accent2);line-height:1.6">${esc(err)}</div></div>`;
+    if (!s.artists.length) return `<div class="as-svc ${s.divCls}">
+      <div class="as-svc-name">${s.label} <span style="color:var(--text3);font-weight:normal">— 0 artists returned</span></div></div>`;
+    const chips = s.artists.map(a => `<span class="artist-chip ${s.chipCls}">${esc(a)}</span>`).join('');
+    return `<div class="as-svc ${s.divCls}"><div class="as-svc-name">${s.label} · ${s.artists.length}</div><div>${chips}</div></div>`;
+  }).join('');
+
+  panel.innerHTML = `<button class="as-toggle open" onclick="toggleArtistSummary(this)">
+    <span class="as-label">Artists · ${total} loaded — ${summary}</span>
+    <span class="as-caret">▴</span></button>
+    <div class="as-inner">${blocks}</div>`;
+  panel.className = 'open';
+}
+function toggleArtistSummary(btn) {
+  const panel = document.getElementById('artistSummary');
+  if (!panel) return;
+  const open = panel.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  btn.querySelector('.as-caret').textContent = open ? '▴' : '▾';
+}
+
 // ── MAIN SEARCH ──────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════
 async function searchConcerts() {
@@ -1509,6 +1613,7 @@ async function searchConcerts() {
   // ── CACHE HIT: same route+radius+keys, cached dates cover the request ──
   if (cache.key === ck && cacheDateCovers(df, dt)) {
     cache.hits++;
+    clearSearchLog(); searchLog('⚡ Cache hit — showing cached results', 'ok');
     console.log(`⚡ Cache hit #${cache.hits} — filtering ${cache.allConcerts.length} cached → ${df}…${dt}`);
 
     const concerts = filterByDate(cache.allConcerts, df, dt);
@@ -1525,13 +1630,17 @@ async function searchConcerts() {
   // ── CACHE MISS: full API fetch ──
   const btn = document.getElementById('searchBtn');
   btn.disabled=true; btn.textContent='⟳ Searching...';
+  clearSearchLog();
+  const _aSum = document.getElementById('artistSummary'); _aSum.innerHTML=''; _aSum.className='';
   setLB(8); clearMap();
 
   showEmpty('Geocoding cities...');
+  searchLog('▶ Geocoding: ' + names.join(' → '));
   console.log('▶ Step 1: Geocoding', names);
 
   const geo = (await Promise.all(names.map(geocode))).filter(Boolean);
   console.log('✓ Geocoded:', geo.length, 'cities');
+  searchLog('✓ ' + geo.length + ' cities located', 'ok');
 
   if (geo.length < 2) {
     alert('Could not locate your cities. Please check spelling.');
@@ -1573,6 +1682,7 @@ async function searchConcerts() {
   if (scEntry && df >= scEntry.dateFrom && dt <= scEntry.dateTo) {
     cache.key = ck; cache.dateFrom = scEntry.dateFrom; cache.dateTo = scEntry.dateTo;
     cache.allConcerts = scEntry.allConcerts; cache.hits = (cache.hits||0) + 1;
+    searchLog('⚡ Session cache hit — skipping API calls', 'ok');
     console.log(`⚡ Session cache hit — filtering ${scEntry.allConcerts.length} cached → ${df}…${dt}`);
     const concerts = filterByDate(scEntry.allConcerts, df, dt);
     state.concerts = concerts;
@@ -1604,15 +1714,22 @@ async function searchConcerts() {
     ]);
 
     const errors = [];
-    if (!spResult.ok) { console.error('Spotify:', spResult.msg); errors.push({ svc: spResult.svc, msg: spResult.msg }); }
-    if (!lfResult.ok) { console.error('Last.fm:', lfResult.msg); errors.push({ svc: lfResult.svc, msg: lfResult.msg }); }
-    if (!dzResult.ok) { console.error('Deezer:', dzResult.msg); errors.push({ svc: dzResult.svc, msg: dzResult.msg }); }
+    if (!spResult.ok) { console.error('Spotify:', spResult.msg); errors.push({ svc: spResult.svc, msg: spResult.msg }); searchLog('✗ Spotify: ' + spResult.msg, 'err'); }
+    if (!lfResult.ok) { console.error('Last.fm:', lfResult.msg); errors.push({ svc: lfResult.svc, msg: lfResult.msg }); searchLog('✗ Last.fm: ' + lfResult.msg, 'err'); }
+    if (!dzResult.ok) { console.error('Deezer:', dzResult.msg); errors.push({ svc: dzResult.svc, msg: dzResult.msg }); searchLog('✗ Deezer: ' + dzResult.msg, 'err'); }
 
     const spArtists = spResult.ok ? spResult.artists : [];
     const lfArtists = lfResult.ok ? lfResult.artists : [];
     const dzArtists = dzResult.ok ? dzResult.artists : [];
     [...spArtists, ...lfArtists, ...dzArtists].forEach(a => likedArtists.add(a.toLowerCase().trim()));
     console.log(`✓ Liked artists: ${likedArtists.size} (${spArtists.length} Spotify + ${lfArtists.length} Last.fm + ${dzArtists.length} Deezer)`);
+    if (spResult.ok && spArtists.length)  searchLog('✓ Spotify: ' + spArtists.length + ' artists', 'ok');
+    else if (spResult.ok && state.spToken) searchLog('⚠ Spotify: 0 artists returned', 'warn');
+    if (lfResult.ok && lfArtists.length)  searchLog('✓ Last.fm: ' + lfArtists.length + ' artists', 'ok');
+    else if (lfResult.ok && state.lfSession) searchLog('⚠ Last.fm: 0 artists returned', 'warn');
+    if (dzResult.ok && dzArtists.length)  searchLog('✓ Deezer: ' + dzArtists.length + ' artists', 'ok');
+    else if (dzResult.ok && state.keys.dz)  searchLog('⚠ Deezer: 0 artists returned', 'warn');
+    renderArtistSummary(spArtists, lfArtists, dzArtists, errors);
 
     if (likedArtists.size === 0) {
       // All connected music services failed — show each error prominently
@@ -1622,6 +1739,7 @@ async function searchConcerts() {
         `<strong style="color:var(--accent2);display:block;margin-bottom:4px">${esc(e.svc)} — connection failed</strong>` +
         esc(e.msg) + '</div>'
       ).join('');
+      renderArtistSummary(spArtists, lfArtists, dzArtists, errors);
       document.getElementById('resultsScroll').innerHTML =
         `<div style="padding:16px">${html}</div>`;
       btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return;
@@ -1639,6 +1757,7 @@ async function searchConcerts() {
   }
 
   setLB(45); showEmpty('Fetching concerts...');
+  searchLog('▶ Scanning ' + waypoints.length + ' waypoints · ' + rad + ' mi radius · ' + df + ' → ' + dt);
   console.log('▶ Step 4: Fetching | Keys:', {tm:!!state.keys.tm,jb:!!state.keys.jb,eb:!!state.keys.eb,lf:!!state.lfSession});
   console.log('  Waypoints:', waypoints.length, '| Radius:', rad, 'mi | Dates:', df, '→', dt);
 
@@ -1653,14 +1772,17 @@ async function searchConcerts() {
     );
     concerts = dedupe(batches.flat());
     console.log('✓ API results:', concerts.length, 'shows after dedup');
+    searchLog('✓ ' + concerts.length + ' shows found on route', 'ok');
 
     // Filter to liked artists when Spotify/Deezer is connected
     if (likedArtists.size > 0) {
       concerts = concerts.filter(c => artistMatchesSet(c.artist || '', likedArtists));
       console.log(`✓ After artist filter: ${concerts.length} shows match your taste`);
+      searchLog('✓ ' + concerts.length + ' shows match your artists', 'ok');
     }
   } catch(err) {
     console.error('✗ Concert fetch error:', err);
+    searchLog('✗ Fetch error: ' + err.message, 'err');
     showEmpty('Something went wrong. See console for details.');
     btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return;
   }
@@ -1684,6 +1806,7 @@ async function searchConcerts() {
   setLB(100);
   renderResults(concerts);
   setTimeout(()=>setLB(0), 600);
+  searchLog('✓ Done — ' + concerts.length + ' show' + (concerts.length !== 1 ? 's' : '') + ' displayed', 'ok');
   btn.disabled=false; btn.textContent='⟶ Find Shows';
 }
 
