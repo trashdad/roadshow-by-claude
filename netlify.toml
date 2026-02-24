@@ -23,6 +23,13 @@
   status = 200
   force = true
 
+# Deezer auth — server-side OAuth token exchange, keeps App Secret off the client.
+[[redirects]]
+  from = "/api/deezer-auth"
+  to = "/.netlify/functions/deezer-auth"
+  status = 200
+  force = true
+
 # OAuth callback route — serves the SPA so popup/redirect callbacks are handled client-side.
 # Query params (?code=, ?token=, ?error=) are preserved automatically by Netlify rewrites.
 [[redirects]]
