@@ -445,6 +445,27 @@ input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 14px rgba(232,197,7
 </div>
 
 <script>
+// ── Popup OAuth callback detection ─────────────────────────────────
+// When Spotify or Last.fm redirects back to our URL inside a popup window,
+// we detect it immediately, cover the app UI with an overlay so it doesn't
+// flash, then relay the auth result to the opener and close.
+const _IS_POPUP_CB = !!(
+  window.opener && window.opener !== window &&
+  (new URLSearchParams(window.location.search).has('code') ||
+   new URLSearchParams(window.location.search).has('token') ||
+   new URLSearchParams(window.location.search).has('error'))
+);
+if (_IS_POPUP_CB) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:#0a0a0a;z-index:99999;' +
+    'display:flex;align-items:center;justify-content:center;' +
+    'font-family:\'DM Mono\',monospace;color:#f0ede6';
+  ov.innerHTML = '<div style="text-align:center">' +
+    '<div style="font-size:1.8rem;margin-bottom:10px">🎵</div>' +
+    '<div style="font-size:.62rem;letter-spacing:.15em;color:#555">AUTHORIZING...</div></div>';
+  document.body.appendChild(ov);
+}
+
 // ── Leaflet check ─────────────────────────────────────────────────
 if (typeof L === 'undefined') {
   document.getElementById('map').innerHTML =
@@ -746,8 +767,8 @@ function openModal(svc) {
     document.getElementById('mInput2').placeholder = c.placeholder2 || '';
     document.getElementById('mInput2').value = svc === 'lf' ? (state.lfSecret || '') : '';
     saveBtn.textContent =
-      svc === 'lf' ? 'Authorize with Last.fm →' :
-      svc === 'sp' ? 'Authorize with Spotify →' :
+      svc === 'lf' ? '🎵 Login with Last.fm →' :
+      svc === 'sp' ? '🎵 Login with Spotify →' :
       'Save';
     setTimeout(() => document.getElementById('mInput').focus(), 80);
   }
@@ -757,37 +778,34 @@ function openModal(svc) {
 function closeModal() { document.getElementById('modalEl').classList.remove('open'); state.modal = null; }
 function closeModalOutside(e) { if (e.target === document.getElementById('modalEl')) closeModal(); }
 
-// Called by the OAuth button when pre-configured credentials are available
+// Called by the pre-configured OAuth button — opens service login in a popup
 function startModalOAuth() {
   const s = state.modal;
   closeModal();
   if (s === 'sp') {
-    spotifyLogin(appConfig.spotifyClientId);
+    openSpotifyPopup(appConfig.spotifyClientId);
   } else if (s === 'lf') {
-    // Server-side exchange: redirect to Last.fm, callback handled by /api/lastfm-auth
-    sessionStorage.setItem('lf_use_server', '1');
-    sessionStorage.setItem('lf_api_key', appConfig.lastfmApiKey);
-    window.location.href =
-      `https://www.last.fm/api/auth/?api_key=${encodeURIComponent(appConfig.lastfmApiKey)}&cb=${encodeURIComponent(lfRedirectUri())}`;
+    openLastFmPopup(appConfig.lastfmApiKey);
   }
 }
 
 function saveKey() {
   const s = state.modal;
-  // Spotify — save Client ID and start PKCE OAuth (page redirects to Spotify)
+  // Spotify — opens Spotify login popup (manual Client ID entry fallback)
   if (s === 'sp') {
     const clientId = document.getElementById('mInput').value.trim();
     closeModal();
-    if (clientId) { state.keys.sp = clientId; spotifyLogin(clientId); }
+    if (clientId) openSpotifyPopup(clientId);
     return;
   }
-  // Last.fm — two-field OAuth redirect (manual/fallback mode)
+  // Last.fm — opens Last.fm login popup (manual API Key + Shared Secret fallback)
   if (s === 'lf') {
     const key    = document.getElementById('mInput').value.trim();
     const secret = document.getElementById('mInput2').value.trim();
-    if (key && secret) {
+    if (key) {
+      if (secret) sessionStorage.setItem('lf_api_secret', secret);
       closeModal();
-      lfLogin(key, secret);  // redirects to Last.fm login page
+      openLastFmPopup(key);
     } else {
       closeModal();
     }
@@ -933,11 +951,15 @@ async function generateCodeChallenge(verifier) {
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
 
-async function spotifyLogin(clientId) {
-  const verifier = generateCodeVerifier();
+// ── Open Spotify login popup (PKCE) ───────────────────────────────
+async function openSpotifyPopup(clientId) {
+  const verifier  = generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
-  sessionStorage.setItem('sp_verifier', verifier);
-  sessionStorage.setItem('sp_client_id', clientId);
+  // Store verifier in parent's sessionStorage — the popup will send the code back
+  // and the parent will use this verifier to exchange it for a token.
+  sessionStorage.setItem('sp_popup_verifier', verifier);
+  sessionStorage.setItem('sp_popup_client_id', clientId);
+
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: 'code',
@@ -946,32 +968,18 @@ async function spotifyLogin(clientId) {
     code_challenge_method: 'S256',
     code_challenge: challenge
   });
-  window.location.href = 'https://accounts.spotify.com/authorize?' + params;
+  const url = 'https://accounts.spotify.com/authorize?' + params;
+  const popup = window.open(url, 'SpotifyLogin', 'width=460,height=640,scrollbars=yes,resizable=yes');
+  if (!popup) {
+    // Popup blocked — fall back to full-page redirect
+    sessionStorage.setItem('sp_verifier', verifier);
+    sessionStorage.setItem('sp_client_id', clientId);
+    window.location.href = url;
+  }
 }
 
-async function handleSpotifyCallback() {
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('code');
-  const error = params.get('error');
-  // Remove auth params from URL regardless of outcome
-  if (code || error) window.history.replaceState({}, '', window.location.pathname);
-
-  if (error) {
-    console.warn('Spotify OAuth cancelled or denied:', error);
-    return;
-  }
-  if (!code) return;
-
-  const verifier  = sessionStorage.getItem('sp_verifier');
-  const clientId  = sessionStorage.getItem('sp_client_id');
-  sessionStorage.removeItem('sp_verifier');
-  sessionStorage.removeItem('sp_client_id');
-
-  if (!verifier || !clientId) {
-    console.error('Spotify callback: code_verifier or client_id missing from sessionStorage. Cannot exchange token.');
-    return;
-  }
-
+// ── Exchange Spotify auth code for access token (PKCE) ────────────
+async function exchangeSpotifyCode(code, verifier, clientId) {
   let res;
   try {
     res = await fetch('https://accounts.spotify.com/api/token', {
@@ -985,23 +993,64 @@ async function handleSpotifyCallback() {
         code_verifier: verifier
       })
     });
-  } catch (e) {
+  } catch(e) {
     console.error('Spotify token exchange network error:', e.message);
     return;
   }
-
   const data = await res.json();
   if (!res.ok || data.error) {
     console.error(`Spotify token exchange failed — ${data.error}: ${data.error_description}`);
     return;
   }
-
   state.keys.sp       = clientId;
   state.spToken       = data.access_token;
   state.spTokenExpiry = Date.now() + data.expires_in * 1000;
   clearCache();
   activateSourceUI('sp', 'Artist matching · connected ✓');
   console.log(`✓ Spotify authorized (token valid for ${data.expires_in}s)`);
+}
+
+// ── Handle Spotify callback (popup OR redirect fallback) ───────────
+async function handleSpotifyCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code  = params.get('code');
+  const error = params.get('error');
+  if (code || error) window.history.replaceState({}, '', window.location.pathname);
+
+  if (error) {
+    if (_IS_POPUP_CB && window.opener) {
+      window.opener.postMessage({ type: 'spotify_error', error }, window.location.origin);
+      setTimeout(() => window.close(), 400);
+    } else {
+      console.warn('Spotify OAuth cancelled or denied:', error);
+    }
+    return;
+  }
+  if (!code) return;
+
+  if (_IS_POPUP_CB && window.opener) {
+    // Popup mode: send code to parent (parent holds the PKCE verifier)
+    window.opener.postMessage({ type: 'spotify_code', code }, window.location.origin);
+    document.body.style.cssText =
+      'margin:0;height:100vh;background:#0a0a0a;display:flex;align-items:center;justify-content:center';
+    document.body.innerHTML =
+      '<div style="text-align:center;font-family:\'DM Mono\',monospace;color:#4ade80">' +
+      '<div style="font-size:1.8rem;margin-bottom:10px">✓</div>' +
+      '<div style="font-size:.6rem;letter-spacing:.14em;opacity:.55">AUTHORIZED · CLOSING</div></div>';
+    setTimeout(() => window.close(), 700);
+    return;
+  }
+
+  // Non-popup: full-page redirect fallback (popup was blocked)
+  const verifier = sessionStorage.getItem('sp_verifier');
+  const clientId = sessionStorage.getItem('sp_client_id');
+  sessionStorage.removeItem('sp_verifier');
+  sessionStorage.removeItem('sp_client_id');
+  if (!verifier || !clientId) {
+    console.error('Spotify callback: code_verifier or client_id missing.');
+    return;
+  }
+  await exchangeSpotifyCode(code, verifier, clientId);
 }
 
 // ── Last.fm Web Auth (OAuth-style) ────────────────────────────────
@@ -1016,27 +1065,32 @@ function lfApiSig(params, secret) {
   );
 }
 
-function lfLogin(apiKey, apiSecret) {
-  sessionStorage.setItem('lf_api_key', apiKey);
-  sessionStorage.setItem('lf_api_secret', apiSecret);
-  window.location.href =
-    `https://www.last.fm/api/auth/?api_key=${encodeURIComponent(apiKey)}&cb=${encodeURIComponent(lfRedirectUri())}`;
+// ── Open Last.fm login popup ───────────────────────────────────────
+function openLastFmPopup(apiKey) {
+  // Store api_key in parent's sessionStorage for use in completeLastFmAuth()
+  sessionStorage.setItem('lf_popup_api_key', apiKey);
+  sessionStorage.setItem('lf_api_key', apiKey); // also kept for redirect fallback
+  const cbUrl = lfRedirectUri();
+  const url = `https://www.last.fm/api/auth/?api_key=${encodeURIComponent(apiKey)}&cb=${encodeURIComponent(cbUrl)}`;
+  const popup = window.open(url, 'LastFmLogin', 'width=460,height=640,scrollbars=yes,resizable=yes');
+  if (!popup) {
+    // Popup blocked — fall back to full-page redirect
+    window.location.href = url;
+  }
 }
 
-async function handleLastFmCallback() {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
-  if (!token) return;
-  window.history.replaceState({}, '', window.location.pathname);
+// ── Complete Last.fm auth after receiving token (popup or redirect) ─
+async function completeLastFmAuth(token) {
+  const apiKey = sessionStorage.getItem('lf_popup_api_key') ||
+                 sessionStorage.getItem('lf_api_key') ||
+                 appConfig?.lastfmApiKey || '';
+  const secret = sessionStorage.getItem('lf_api_secret');
+  sessionStorage.removeItem('lf_popup_api_key');
+  sessionStorage.removeItem('lf_api_key');
+  sessionStorage.removeItem('lf_api_secret');
 
-  const useServer = sessionStorage.getItem('lf_use_server');
-
-  if (useServer) {
-    // ── Server-side exchange: shared secret never touches the browser ──
-    sessionStorage.removeItem('lf_use_server');
-    const apiKey = sessionStorage.getItem('lf_api_key');
-    sessionStorage.removeItem('lf_api_key');
-
+  if (appConfig?.lastfmApiKey) {
+    // Pre-configured: server-side exchange (Shared Secret never leaves the server)
     let res;
     try {
       res = await fetch('/api/lastfm-auth', {
@@ -1045,78 +1099,107 @@ async function handleLastFmCallback() {
         body: JSON.stringify({ token })
       });
     } catch(e) {
-      console.error('Last.fm server auth network error:', e.message);
+      console.error('Last.fm server auth error:', e.message);
       showEmpty('Last.fm authorization failed (network error). Please try again.');
       return;
     }
-
     let data;
     try { data = await res.json(); }
     catch { console.error('Last.fm server auth returned non-JSON.'); return; }
-
     if (!res.ok || data.error) {
       const msg = data.error?.message || data.error || JSON.stringify(data);
       console.error('Last.fm server auth failed:', msg);
       showEmpty(`Last.fm authorization failed: ${esc(String(msg))}. Please try again.`);
       return;
     }
-
-    state.lfKey     = apiKey || appConfig?.lastfmApiKey || '';
-    state.lfSecret  = null;  // kept server-side
+    state.lfKey    = apiKey;
+    state.lfSecret = null; // kept server-side
     state.lfSession = data.session.key;
     state.lfUser    = data.session.name;
-    clearCache();
-    activateSourceUI('lf', `${esc(state.lfUser)} · connected ✓`);
-    console.log(`✓ Last.fm authorized for ${state.lfUser} (server-side exchange)`);
+
+  } else if (apiKey && secret) {
+    // Manual mode: client-side exchange using the user's own API key + secret
+    const sigParams = { api_key: apiKey, method: 'auth.getSession', token };
+    const sig = lfApiSig(sigParams, secret);
+    let res;
+    try {
+      res = await fetch(
+        `https://ws.audioscrobbler.com/2.0/?method=auth.getSession` +
+        `&api_key=${encodeURIComponent(apiKey)}&token=${encodeURIComponent(token)}` +
+        `&api_sig=${sig}&format=json`
+      );
+    } catch(e) {
+      console.error('Last.fm client auth error:', e.message);
+      showEmpty('Last.fm authorization failed (network error). Please try again.');
+      return;
+    }
+    let data;
+    try { data = await res.json(); }
+    catch { console.error('Last.fm client auth non-JSON.'); return; }
+    if (data.error) {
+      console.error(`Last.fm auth.getSession error ${data.error}: ${data.message}`);
+      showEmpty(`Last.fm authorization failed (${esc(data.message)}). Please try again.`);
+      return;
+    }
+    state.lfKey     = apiKey;
+    state.lfSecret  = secret;
+    state.lfSession = data.session.key;
+    state.lfUser    = data.session.name;
+
+  } else {
+    console.error('Last.fm: no API key or secret available for exchange.');
+    showEmpty('Last.fm: credentials missing. Please try connecting again.');
     return;
   }
 
-  // ── Client-side exchange (manual key entry / fallback mode) ──
-  const apiKey = sessionStorage.getItem('lf_api_key');
-  const secret  = sessionStorage.getItem('lf_api_secret');
-  sessionStorage.removeItem('lf_api_key');
-  sessionStorage.removeItem('lf_api_secret');
-
-  if (!apiKey || !secret) {
-    console.error('Last.fm callback: api_key or secret missing from sessionStorage.');
-    return;
-  }
-
-  const sigParams = { api_key: apiKey, method: 'auth.getSession', token };
-  const sig = lfApiSig(sigParams, secret);
-
-  let res;
-  try {
-    res = await fetch(
-      `https://ws.audioscrobbler.com/2.0/?method=auth.getSession` +
-      `&api_key=${encodeURIComponent(apiKey)}&token=${encodeURIComponent(token)}` +
-      `&api_sig=${sig}&format=json`
-    );
-  } catch(e) {
-    console.error('Last.fm session exchange network error:', e.message);
-    return;
-  }
-
-  let data;
-  try { data = await res.json(); }
-  catch { console.error('Last.fm session exchange returned non-JSON.'); return; }
-
-  if (data.error) {
-    console.error(`Last.fm auth.getSession error ${data.error}: ${data.message}`);
-    showEmpty(
-      `Last.fm authorization failed (error ${data.error}: ${esc(data.message)}).<br>` +
-      'Click the Last.fm "Connect" button and try again.'
-    );
-    return;
-  }
-
-  state.lfKey     = apiKey;
-  state.lfSecret  = secret;
-  state.lfSession = data.session.key;
-  state.lfUser    = data.session.name;
   clearCache();
   activateSourceUI('lf', `${esc(state.lfUser)} · connected ✓`);
   console.log(`✓ Last.fm authorized for ${state.lfUser}`);
+}
+
+// ── Message listener for OAuth popup results ──────────────────────
+// Set up once on the main (non-popup) window. The popup calls postMessage
+// with { type: 'spotify_code'|'lastfm_token', ... } before it closes.
+function setupPopupListener() {
+  window.addEventListener('message', async function(e) {
+    if (e.origin !== window.location.origin) return;
+    const d = e.data;
+    if (d.type === 'spotify_code') {
+      const verifier = sessionStorage.getItem('sp_popup_verifier');
+      const clientId = sessionStorage.getItem('sp_popup_client_id');
+      sessionStorage.removeItem('sp_popup_verifier');
+      sessionStorage.removeItem('sp_popup_client_id');
+      if (verifier && clientId) await exchangeSpotifyCode(d.code, verifier, clientId);
+    } else if (d.type === 'lastfm_token') {
+      await completeLastFmAuth(d.token);
+    } else if (d.type === 'spotify_error') {
+      console.warn('Spotify OAuth denied:', d.error);
+    }
+  });
+}
+
+// ── Handle Last.fm callback (popup OR redirect fallback) ───────────
+async function handleLastFmCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  if (!token) return;
+  window.history.replaceState({}, '', window.location.pathname);
+
+  if (_IS_POPUP_CB && window.opener) {
+    // Popup mode: relay token to parent, show success, close
+    window.opener.postMessage({ type: 'lastfm_token', token }, window.location.origin);
+    document.body.style.cssText =
+      'margin:0;height:100vh;background:#0a0a0a;display:flex;align-items:center;justify-content:center';
+    document.body.innerHTML =
+      '<div style="text-align:center;font-family:\'DM Mono\',monospace;color:#4ade80">' +
+      '<div style="font-size:1.8rem;margin-bottom:10px">✓</div>' +
+      '<div style="font-size:.6rem;letter-spacing:.14em;opacity:.55">AUTHORIZED · CLOSING</div></div>';
+    setTimeout(() => window.close(), 700);
+    return;
+  }
+
+  // Non-popup: full-page redirect fallback (popup was blocked)
+  await completeLastFmAuth(token);
 }
 
 function activateSourceUI(svc, note) {
@@ -1131,16 +1214,14 @@ function activateSourceUI(svc, note) {
 async function fetchSpotifyArtists() {
   if (!state.spToken) {
     throw new Error(
-      'No Spotify access token found. ' +
-      'Click the Spotify "Connect" button, enter your Client ID, and authorize with Spotify.'
+      'Not connected to Spotify. Click the Spotify "Connect" button and log in to authorize.'
     );
   }
   if (Date.now() >= state.spTokenExpiry) {
     state.spToken = null;
     activateSourceUI('sp', 'Artist matching · token expired');
     throw new Error(
-      'Your Spotify access token has expired (tokens last 1 hour). ' +
-      'Click the Spotify "Connect" button and re-authorize to get a fresh token.'
+      'Your Spotify session expired (tokens last 1 hour). Click the Spotify "Connect" button to log in again.'
     );
   }
 
@@ -1714,11 +1795,20 @@ function zoomTo(lat, lon) {
 }
 
 // ── Handle OAuth returns on page load ─────────────────────────────
-// Load server config first (for pre-configured OAuth buttons), then handle callbacks.
-loadConfig().then(() => {
+if (_IS_POPUP_CB) {
+  // This page is a popup handling a callback — run handlers immediately,
+  // no need to load config or set up the full app.
   handleSpotifyCallback();
   handleLastFmCallback();
-});
+} else {
+  // Normal page load: set up popup message listener first, then load config
+  // so the modal buttons know whether pre-configured OAuth is available.
+  setupPopupListener();
+  loadConfig().then(() => {
+    handleSpotifyCallback(); // handles any redirect-fallback code in URL
+    handleLastFmCallback();  // handles any redirect-fallback token in URL
+  });
+}
 
 </script>
 </body>
