@@ -37,6 +37,14 @@ exports.handler = async (event) => {
     ? '?' + new URLSearchParams(event.queryStringParameters).toString()
     : '';
 
+  // Decode body first so we can set Content-Length before opening the request.
+  // Without Content-Length, Node.js uses chunked transfer encoding which
+  // Deezer's internal gw-light.php rejects with GATEWAY_ERROR.
+  const bodyStr = event.body
+    ? (event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString('utf8') : event.body)
+    : '';
+  const bodyBytes = Buffer.byteLength(bodyStr, 'utf8');
+
   return new Promise((resolve) => {
     const options = {
       hostname: 'www.deezer.com',
@@ -44,6 +52,7 @@ exports.handler = async (event) => {
       method: 'POST',
       headers: {
         'Content-Type': event.headers['content-type'] || 'text/plain;charset=UTF-8',
+        'Content-Length': bodyBytes,
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
         'Accept': '*/*',
         'Accept-Language': 'en-US,en;q=0.9',
@@ -76,13 +85,7 @@ exports.handler = async (event) => {
       });
     });
 
-    if (event.body) {
-      // Netlify may base64-encode the body for binary content types — decode it back to UTF-8
-      const bodyStr = event.isBase64Encoded
-        ? Buffer.from(event.body, 'base64').toString('utf8')
-        : event.body;
-      req.write(bodyStr, 'utf8');
-    }
+    if (bodyStr) req.write(bodyStr, 'utf8');
     req.end();
   });
 };

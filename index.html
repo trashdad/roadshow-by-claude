@@ -1403,7 +1403,7 @@ async function fetchDeezerArtists(arl) {
       `${GW}?method=user.getArtists&input=3&api_version=1.0&api_token=${encodeURIComponent(apiToken)}`,
       { method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=UTF-8', ...ARL_HEADER },
-        body: JSON.stringify({ user_id: userId, nb: 500, start: 0, tab: 0 }) }
+        body: JSON.stringify({ user_id: userId, nb: 500, start: 0 }) }
     );
   } catch (e) {
     throw new Error('Network error fetching Deezer artists: ' + e.message);
