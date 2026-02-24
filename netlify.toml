@@ -22,3 +22,11 @@
   to = "/.netlify/functions/lastfm-auth"
   status = 200
   force = true
+
+# OAuth callback route — serves the SPA so popup/redirect callbacks are handled client-side.
+# Query params (?code=, ?token=, ?error=) are preserved automatically by Netlify rewrites.
+[[redirects]]
+  from = "/callbacks"
+  to = "/index.html"
+  status = 200
+  force = true
