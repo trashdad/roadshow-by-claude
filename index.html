@@ -1395,13 +1395,14 @@ async function fetchDeezerArtists(arl) {
   console.log(`✓ Deezer session established for user ${userId}`);
 
   // ── Step 2: Fetch user's favorite artists ──
-  // user_id and tab must be in the POST body; nb/start also go in the body.
+  // IMPORTANT: Content-Type must be text/plain;charset=UTF-8 for ALL gw-light.php calls.
+  // Sending application/json causes GATEWAY_ERROR: Undefined or invalid output.
   let artistsRes;
   try {
     artistsRes = await fetch(
       `${GW}?method=user.getArtists&input=3&api_version=1.0&api_token=${encodeURIComponent(apiToken)}`,
       { method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...ARL_HEADER },
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8', ...ARL_HEADER },
         body: JSON.stringify({ user_id: userId, nb: 500, start: 0, tab: 0 }) }
     );
   } catch (e) {
@@ -1414,23 +1415,37 @@ async function fetchDeezerArtists(arl) {
     );
   }
 
-  let artistsData;
-  try { artistsData = await artistsRes.json(); }
-  catch {
-    throw new Error('Deezer returned non-JSON on user.getArtists. The API may be temporarily unavailable.');
+  let artistsRaw, artistsData;
+  try {
+    artistsRaw = await artistsRes.text();
+    artistsData = JSON.parse(artistsRaw);
+  } catch {
+    throw new Error(
+      'Deezer returned non-JSON on user.getArtists. Raw: ' + (artistsRaw || '').slice(0, 200)
+    );
   }
 
   if (artistsData.error && Object.keys(artistsData.error).length > 0) {
     throw new Error(
-      `Deezer API error on user.getArtists: ${JSON.stringify(artistsData.error)}.`
+      `Deezer API error on user.getArtists: ${JSON.stringify(artistsData.error)}. ` +
+      'Raw: ' + artistsRaw.slice(0, 300)
+    );
+  }
+
+  // Deezer sometimes returns GATEWAY_ERROR inside results instead of error
+  if (artistsData.results?.GATEWAY_ERROR) {
+    throw new Error(
+      `Deezer gateway error on user.getArtists: "${artistsData.results.GATEWAY_ERROR}". ` +
+      'Raw: ' + artistsRaw.slice(0, 300)
     );
   }
 
   const artists = (artistsData.results?.data || []).map(a => a.ART_NAME).filter(Boolean);
   if (artists.length === 0) {
     throw new Error(
-      'Deezer returned 0 favorite artists for this account. ' +
-      'Open deezer.com, go to your profile → Favorites → Artists and make sure you have artists saved.'
+      'Deezer returned 0 favorite artists. ' +
+      'Open deezer.com → your profile → Favorites → Artists and verify you have artists saved. ' +
+      'Raw results: ' + JSON.stringify(artistsData.results).slice(0, 300)
     );
   }
   return artists;

@@ -76,7 +76,13 @@ exports.handler = async (event) => {
       });
     });
 
-    if (event.body) req.write(event.body);
+    if (event.body) {
+      // Netlify may base64-encode the body for binary content types — decode it back to UTF-8
+      const bodyStr = event.isBase64Encoded
+        ? Buffer.from(event.body, 'base64').toString('utf8')
+        : event.body;
+      req.write(bodyStr, 'utf8');
+    }
     req.end();
   });
 };
