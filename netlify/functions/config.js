@@ -21,6 +21,7 @@ exports.handler = async () => {
     body: JSON.stringify({
       spotifyClientId: process.env.SPOTIFY_CLIENT_ID || '',
       lastfmApiKey: process.env.LASTFM_API_KEY || '',
+      deezerAppId: process.env.DEEZER_APP_ID || '',
     }),
   };
 };

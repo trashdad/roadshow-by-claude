@@ -16,6 +16,9 @@
   --bg:#0a0a0a; --bg2:#111; --bg3:#1a1a1a; --panel:#121212; --border:#222;
   --accent:#e8c547; --accent2:#ff5c38; --text:#f0ede6;
   --text2:#888; --text3:#555; --green:#4ade80; --r:4px;
+  --spotify:#1DB954; --spotify-hover:#1ed760;
+  --lastfm:#B90000; --lastfm-hover:#d40000;
+  --deezer:#A238FF; --deezer-hover:#b85cff;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden;}
@@ -38,7 +41,7 @@ header{padding:12px 24px;border-bottom:1px solid var(--border);display:flex;alig
 .p-jb{color:var(--green);border-color:rgba(74,222,128,.35);background:rgba(74,222,128,.07);}
 .p-eb{color:#f97316;border-color:rgba(249,115,22,.35);background:rgba(249,115,22,.07);}
 .p-sp{color:#a78bfa;border-color:rgba(167,139,250,.35);background:rgba(167,139,250,.07);}
-.p-dz{color:#ff6b9d;border-color:rgba(255,107,157,.35);background:rgba(255,107,157,.07);}
+.p-dz{color:#A238FF;border-color:rgba(162,56,255,.35);background:rgba(162,56,255,.07);}
 .p-off{color:var(--text3);border-color:var(--border);background:transparent;opacity:.38;}
 
 /* ─── 3-Column Layout ─── */
@@ -108,7 +111,8 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
 .api-row:hover{border-color:var(--text3);}
 .api-row.on{border-color:rgba(74,222,128,.4);}
 .api-row.dim{opacity:.35;}
-.api-ico{font-size:.78rem;width:16px;text-align:center;flex-shrink:0;}
+.api-ico{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.api-ico svg{width:16px;height:16px;}
 .api-info{flex:1;min-width:0;}
 .api-note{font-size:.5rem;color:var(--text3);margin-top:1px;}
 .api-row.on .api-note{color:var(--green);}
@@ -172,7 +176,7 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
 .cc.s-jb:hover{border-color:rgba(74,222,128,.4);}
 .cc.s-eb:hover{border-color:rgba(249,115,22,.4);}
 .cc.s-sp:hover{border-color:rgba(29,185,84,.4);}
-.cc.s-dz:hover{border-color:rgba(255,107,157,.4);}
+.cc.s-dz:hover{border-color:rgba(162,56,255,.4);}
 .cc.s-lf::before{background:#d51007;}.cc.s-lf:hover{border-color:rgba(213,16,7,.4);}
 .t-lf{color:#d51007;border-color:rgba(213,16,7,.22);background:rgba(213,16,7,.07);}
 .p-lf{color:#d51007;border-color:rgba(213,16,7,.35);background:rgba(213,16,7,.07);}
@@ -194,7 +198,7 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
 .t-jb{color:var(--green);border-color:rgba(74,222,128,.22);background:rgba(74,222,128,.07);}
 .t-eb{color:#f97316;border-color:rgba(249,115,22,.22);background:rgba(249,115,22,.07);}
 .t-sp{color:#1db954;border-color:rgba(29,185,84,.22);background:rgba(29,185,84,.07);}
-.t-dz{color:#ff6b9d;border-color:rgba(255,107,157,.22);background:rgba(255,107,157,.07);}
+.t-dz{color:#A238FF;border-color:rgba(162,56,255,.22);background:rgba(162,56,255,.07);}
 .t-gen{color:var(--text3);border-color:var(--border);background:transparent;}
 .ca{display:flex;gap:5px;margin-top:7px;padding-top:7px;border-top:1px solid var(--border);}
 .bs{font-family:'DM Mono',monospace;font-size:.52rem;padding:3px 8px;border-radius:var(--r);
@@ -246,10 +250,41 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
   font-family:'DM Mono',monospace;font-size:.62rem;border-radius:var(--r);cursor:pointer;font-weight:500;transition:all .15s;}
 .b-save:hover{background:#f0d060;}
 .b-oauth{width:100%;padding:11px;border:none;border-radius:var(--r);font-family:'DM Mono',monospace;
-  font-size:.72rem;letter-spacing:.06em;cursor:pointer;font-weight:500;transition:all .18s;color:#fff;
-  background:#1db954;margin-bottom:0;}
-.b-oauth.lf-btn{background:#d51007;}
-.b-oauth:hover{opacity:.88;transform:translateY(-1px);}
+  font-size:.72rem;letter-spacing:.06em;cursor:pointer;font-weight:500;transition:all .18s;
+  display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:0;}
+.b-oauth:hover{opacity:.92;transform:translateY(-1px);}
+.b-oauth:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.b-oauth.sp-btn{background:var(--spotify);color:#000;}
+.b-oauth.sp-btn:hover{background:var(--spotify-hover);}
+.b-oauth.lf-btn{background:var(--lastfm);color:#fff;}
+.b-oauth.lf-btn:hover{background:var(--lastfm-hover);}
+.b-oauth.dz-btn{background:var(--deezer);color:#fff;}
+.b-oauth.dz-btn:hover{background:var(--deezer-hover);}
+
+/* OAuth loading state */
+.oauth-loading{display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px;font-size:.62rem;color:var(--text2);letter-spacing:.08em;}
+.oauth-spinner{width:14px;height:14px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* OAuth success state */
+.oauth-success{display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px;font-size:.62rem;color:var(--green);letter-spacing:.08em;}
+.oauth-success svg{width:16px;height:16px;fill:var(--green);}
+
+/* OAuth error state (inline in modal) */
+.oauth-error{padding:8px 12px;margin-bottom:10px;font-size:.54rem;line-height:1.7;
+  color:var(--accent2);background:rgba(255,92,56,.07);
+  border:1px solid rgba(255,92,56,.25);border-radius:var(--r);}
+
+/* Tab toggle for Deezer OAuth vs ARL */
+.auth-tabs{display:flex;gap:0;margin-bottom:12px;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.auth-tab{flex:1;padding:7px 10px;font-family:'DM Mono',monospace;font-size:.56rem;
+  letter-spacing:.06em;text-align:center;cursor:pointer;border:none;
+  background:transparent;color:var(--text3);transition:all .15s;}
+.auth-tab.active{background:var(--bg3);color:var(--text);border-bottom:2px solid var(--deezer);}
+.auth-tab:hover:not(.active){color:var(--text2);}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 
@@ -300,12 +335,12 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
 .as-svc{margin-bottom:7px;}.as-svc:last-child{margin-bottom:0;}
 .as-svc-name{font-family:'DM Mono',monospace;font-size:.44rem;letter-spacing:.12em;
   text-transform:uppercase;margin-bottom:4px;}
-.as-sp .as-svc-name{color:#1db954;} .as-lf .as-svc-name{color:#d51007;} .as-dz .as-svc-name{color:#ff6b9d;}
+.as-sp .as-svc-name{color:#1db954;} .as-lf .as-svc-name{color:#d51007;} .as-dz .as-svc-name{color:#A238FF;}
 .artist-chip{display:inline-block;font-family:'DM Mono',monospace;font-size:.48rem;padding:2px 7px;
   border-radius:10px;margin:2px 2px;border:1px solid;line-height:1.5;white-space:nowrap;}
 .chip-sp{color:#1db954;border-color:rgba(29,185,84,.3);background:rgba(29,185,84,.06);}
 .chip-lf{color:#d51007;border-color:rgba(213,16,7,.3);background:rgba(213,16,7,.06);}
-.chip-dz{color:#ff6b9d;border-color:rgba(255,107,157,.3);background:rgba(255,107,157,.06);}
+.chip-dz{color:#A238FF;border-color:rgba(162,56,255,.3);background:rgba(162,56,255,.06);}
 </style>
 </head>
 <body>
@@ -389,7 +424,7 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
         </div>
         <div class="api-divider">── music services ──</div>
         <div class="api-row dim" id="row-lf">
-          <div class="api-ico">🎵</div>
+          <div class="api-ico"><svg viewBox="0 0 24 24" fill="#B90000"><path d="M10.584 17.21l-.88-2.392s-1.43 1.594-3.573 1.594c-1.897 0-3.244-1.649-3.244-4.288 0-3.381 1.704-4.591 3.381-4.591 2.42 0 3.189 1.567 3.849 3.574l.88 2.749c.88 2.666 2.529 4.81 7.284 4.81 3.409 0 5.718-1.044 5.718-3.793 0-2.227-1.265-3.381-3.627-3.933l-1.758-.385c-1.21-.275-1.567-.77-1.567-1.594 0-.935.742-1.484 1.952-1.484 1.32 0 2.034.495 2.144 1.677l2.749-.33c-.22-2.474-1.924-3.492-4.729-3.492-2.474 0-4.893.935-4.893 3.932 0 1.87.907 3.051 3.189 3.601l1.87.44c1.402.33 1.87.88 1.87 1.704 0 1.045-.99 1.484-2.859 1.484-2.776 0-3.932-1.457-4.591-3.464l-.907-2.749c-1.155-3.574-2.997-4.894-6.653-4.894C2.144 5.333 0 7.89 0 12.233c0 4.179 2.144 6.434 5.993 6.434 3.107 0 4.591-1.457 4.591-1.457z"/></svg></div>
           <div class="api-info">
             <div class="api-name">Last.fm <span class="api-badge badge-primary">★ Primary</span></div>
             <div class="api-note" id="note-lf">Match top artists · not connected</div>
@@ -397,7 +432,7 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
           <button class="api-btn" onclick="openModal('lf')">Connect</button>
         </div>
         <div class="api-row dim" id="row-sp">
-          <div class="api-ico">🎵</div>
+          <div class="api-ico"><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></div>
           <div class="api-info">
             <div class="api-name">Spotify</div>
             <div class="api-note" id="note-sp">Top artists · not connected</div>
@@ -405,7 +440,7 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
           <button class="api-btn" onclick="openModal('sp')">Connect</button>
         </div>
         <div class="api-row dim" id="row-dz">
-          <div class="api-ico">🎧</div>
+          <div class="api-ico"><svg viewBox="0 0 24 24" fill="#A238FF"><path d="M18.81 4.16v3.03H24V4.16h-5.19zM6.27 8.38v3.027h5.19V8.38H6.27zm12.54 0v3.027H24V8.38h-5.19zM6.27 12.566v3.027h5.19v-3.027H6.27zm6.27 0v3.027h5.19v-3.027h-5.19zm6.27 0v3.027H24v-3.027h-5.19zM0 16.752V19.8h5.19v-3.048H0zm6.27 0V19.8h5.19v-3.048H6.27zm6.27 0V19.8h5.19v-3.048h-5.19zm6.27 0V19.8H24v-3.048h-5.19z"/></svg></div>
           <div class="api-info">
             <div class="api-name">Deezer</div>
             <div class="api-note" id="note-dz">Favorite artists · not connected</div>
@@ -475,9 +510,36 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
   <div class="md">
     <h3 id="mTitle">Connect</h3>
     <p id="mDesc"></p>
+    <!-- Error display area -->
+    <div id="mErrorArea" style="display:none"></div>
     <!-- OAuth section: shown when site has pre-configured credentials -->
     <div id="mOAuthSection" style="display:none;margin-bottom:4px">
       <button class="b-oauth" id="mOAuthBtn" onclick="startModalOAuth()">Login</button>
+    </div>
+    <!-- Loading state -->
+    <div id="mLoadingSection" style="display:none">
+      <div class="oauth-loading">
+        <div class="oauth-spinner"></div>
+        <span id="mLoadingText">Authorizing...</span>
+      </div>
+    </div>
+    <!-- Success state -->
+    <div id="mSuccessSection" style="display:none">
+      <div class="oauth-success">
+        <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        <span id="mSuccessText">Connected!</span>
+      </div>
+    </div>
+    <!-- Deezer auth tabs (OAuth vs ARL) -->
+    <div id="mDeezerTabs" style="display:none">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="dzTabOAuth" onclick="switchDzTab('oauth')">OAuth Login</button>
+        <button class="auth-tab" id="dzTabARL" onclick="switchDzTab('arl')">ARL Cookie</button>
+      </div>
+    </div>
+    <!-- Deezer OAuth sub-section -->
+    <div id="mDzOAuthSection" style="display:none">
+      <button class="b-oauth dz-btn" id="mDzOAuthBtn" onclick="startModalOAuth()">Login with Deezer</button>
     </div>
     <!-- Manual section: shown for API-key services or as fallback -->
     <div id="mManualSection">
@@ -487,7 +549,7 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
         <input type="text" id="mInput2" placeholder=""/>
       </div>
     </div>
-    <div class="ma">
+    <div class="ma" id="mActions">
       <button class="b-cancel" onclick="closeModal()">Cancel</button>
       <button class="b-save" id="mSaveBtn" onclick="saveKey()">Save</button>
     </div>
@@ -503,7 +565,8 @@ const _IS_POPUP_CB = !!(
   window.opener && window.opener !== window &&
   (new URLSearchParams(window.location.search).has('code') ||
    new URLSearchParams(window.location.search).has('token') ||
-   new URLSearchParams(window.location.search).has('error'))
+   new URLSearchParams(window.location.search).has('error') ||
+   new URLSearchParams(window.location.search).has('error_reason'))
 );
 if (_IS_POPUP_CB) {
   const ov = document.createElement('div');
@@ -511,7 +574,7 @@ if (_IS_POPUP_CB) {
     'display:flex;align-items:center;justify-content:center;' +
     'font-family:\'DM Mono\',monospace;color:#f0ede6';
   ov.innerHTML = '<div style="text-align:center">' +
-    '<div style="font-size:1.8rem;margin-bottom:10px">🎵</div>' +
+    '<div class="oauth-spinner" style="width:24px;height:24px;margin:0 auto 14px"></div>' +
     '<div style="font-size:.62rem;letter-spacing:.15em;color:#555">AUTHORIZING...</div></div>';
   document.body.appendChild(ov);
 }
@@ -596,6 +659,17 @@ const MCFG = {
 const SRC_COLORS = { tm:'#60a5fa', jb:'#4ade80', eb:'#f97316' };
 const SRC_LABELS = { tm:'Ticketmaster', jb:'Jambase', eb:'Eventbrite' };
 
+// ── SVG icon helpers (inline, no external assets) ──────────────────
+function svgSpotifyIcon(size) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>`;
+}
+function svgLastfmIcon(size) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"><path d="M10.584 17.21l-.88-2.392s-1.43 1.594-3.573 1.594c-1.897 0-3.244-1.649-3.244-4.288 0-3.381 1.704-4.591 3.381-4.591 2.42 0 3.189 1.567 3.849 3.574l.88 2.749c.88 2.666 2.529 4.81 7.284 4.81 3.409 0 5.718-1.044 5.718-3.793 0-2.227-1.265-3.381-3.627-3.933l-1.758-.385c-1.21-.275-1.567-.77-1.567-1.594 0-.935.742-1.484 1.952-1.484 1.32 0 2.034.495 2.144 1.677l2.749-.33c-.22-2.474-1.924-3.492-4.729-3.492-2.474 0-4.893.935-4.893 3.932 0 1.87.907 3.051 3.189 3.601l1.87.44c1.402.33 1.87.88 1.87 1.704 0 1.045-.99 1.484-2.859 1.484-2.776 0-3.932-1.457-4.591-3.464l-.907-2.749c-1.155-3.574-2.997-4.894-6.653-4.894C2.144 5.333 0 7.89 0 12.233c0 4.179 2.144 6.434 5.993 6.434 3.107 0 4.591-1.457 4.591-1.457z"/></svg>`;
+}
+function svgDeezerIcon(size) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"><path d="M18.81 4.16v3.03H24V4.16h-5.19zM6.27 8.38v3.027h5.19V8.38H6.27zm12.54 0v3.027H24V8.38h-5.19zM6.27 12.566v3.027h5.19v-3.027H6.27zm6.27 0v3.027h5.19v-3.027h-5.19zm6.27 0v3.027H24v-3.027h-5.19zM0 16.752V19.8h5.19v-3.048H0zm6.27 0V19.8h5.19v-3.048H6.27zm6.27 0V19.8h5.19v-3.048h-5.19zm6.27 0V19.8H24v-3.048h-5.19z"/></svg>`;
+}
+
 // ── App config (from /api/config — set env vars in Netlify Dashboard) ──────
 let appConfig = null;
 
@@ -610,6 +684,9 @@ async function loadConfig() {
       }
       if (appConfig.lastfmApiKey) {
         MCFG.lf.desc = 'Log in with your Last.fm account. Your top artists will be matched to shows along your route.';
+      }
+      if (appConfig.deezerAppId) {
+        MCFG.dz.desc = 'Log in with your Deezer account. Your favorite artists will be matched to shows along your route.';
       }
     } else {
       appConfig = {};
@@ -626,7 +703,8 @@ const state = {
   modal:null, filters:new Set(['tm','jb','eb']),
   lastDiffDays: 0,
   spToken: null, spTokenExpiry: 0,
-  lfKey: null, lfSecret: null, lfSession: null, lfUser: null
+  lfKey: null, lfSecret: null, lfSession: null, lfUser: null,
+  dzToken: null, dzUser: null, dzTokenExpiry: 0
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -653,7 +731,86 @@ const cache = {
 const sessionCache = new Map(); // cacheKey → {dateFrom, dateTo, allConcerts}
 
 function cacheKey(names, radius, keys) {
-  return JSON.stringify({ n:names.map(s=>s.toLowerCase().trim()), r:radius, tm:!!keys.tm, jb:!!keys.jb, eb:!!keys.eb, sp:!!state.spToken, lf:!!state.lfSession, dz:!!keys.dz });
+  return JSON.stringify({ n:names.map(s=>s.toLowerCase().trim()), r:radius, tm:!!keys.tm, jb:!!keys.jb, eb:!!keys.eb, sp:!!state.spToken, lf:!!state.lfSession, dz:!!(state.dzToken||keys.dz) });
+}
+
+// ── CSRF state parameter for OAuth ─────────────────────────────────
+function generateOAuthState(service) {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  const stateVal = service + '_' + btoa(String.fromCharCode(...arr))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  sessionStorage.setItem('oauth_state_' + service, stateVal);
+  return stateVal;
+}
+
+function validateOAuthState(service, receivedState) {
+  const expected = sessionStorage.getItem('oauth_state_' + service);
+  sessionStorage.removeItem('oauth_state_' + service);
+  if (!expected || expected !== receivedState) {
+    console.error(`OAuth state mismatch for ${service}. Expected: ${expected}, received: ${receivedState}`);
+    return false;
+  }
+  return true;
+}
+
+// ── Modal state management ─────────────────────────────────────────
+function showModalLoading(text) {
+  document.getElementById('mOAuthSection').style.display = 'none';
+  document.getElementById('mDzOAuthSection').style.display = 'none';
+  document.getElementById('mManualSection').style.display = 'none';
+  document.getElementById('mActions').style.display = 'none';
+  document.getElementById('mLoadingText').textContent = text || 'Authorizing...';
+  document.getElementById('mLoadingSection').style.display = '';
+  document.getElementById('mSuccessSection').style.display = 'none';
+  document.getElementById('mErrorArea').style.display = 'none';
+}
+
+function showModalSuccess(text) {
+  document.getElementById('mLoadingSection').style.display = 'none';
+  document.getElementById('mSuccessText').textContent = text || 'Connected!';
+  document.getElementById('mSuccessSection').style.display = '';
+  setTimeout(() => closeModal(), 1500);
+}
+
+function showModalError(msg) {
+  const area = document.getElementById('mErrorArea');
+  area.innerHTML = '<div class="oauth-error">' + esc(msg) + '</div>';
+  area.style.display = '';
+}
+
+function clearModalError() {
+  const area = document.getElementById('mErrorArea');
+  area.innerHTML = '';
+  area.style.display = 'none';
+}
+
+// ── Deezer modal tab switching ─────────────────────────────────────
+function switchDzTab(tab) {
+  const oauthTab = document.getElementById('dzTabOAuth');
+  const arlTab = document.getElementById('dzTabARL');
+  const dzOAuthSec = document.getElementById('mDzOAuthSection');
+  const manualSec = document.getElementById('mManualSection');
+  const saveBtn = document.getElementById('mSaveBtn');
+  const actions = document.getElementById('mActions');
+
+  if (tab === 'oauth') {
+    oauthTab.classList.add('active');
+    arlTab.classList.remove('active');
+    dzOAuthSec.style.display = '';
+    manualSec.style.display = 'none';
+    saveBtn.style.display = 'none';
+  } else {
+    arlTab.classList.add('active');
+    oauthTab.classList.remove('active');
+    dzOAuthSec.style.display = 'none';
+    manualSec.style.display = '';
+    saveBtn.style.display = '';
+    saveBtn.textContent = 'Save ARL';
+    actions.style.display = 'flex';
+    document.getElementById('mInput').placeholder = MCFG.dz.placeholder;
+    document.getElementById('mInput').value = state.keys.dz || '';
+  }
 }
 
 function cacheDateCovers(df, dt) {
@@ -776,10 +933,11 @@ function hav(la1,lo1,la2,lo2) {
 function openModal(svc) {
   state.modal = svc;
   const c = MCFG[svc];
+  clearModalError();
 
-  // Determine if we can use pre-configured OAuth (no manual key entry)
   const useSpOAuth = svc === 'sp' && appConfig?.spotifyClientId;
   const useLfOAuth = svc === 'lf' && appConfig?.lastfmApiKey;
+  const useDzOAuth = svc === 'dz' && appConfig?.deezerAppId;
   const useOAuth = useSpOAuth || useLfOAuth;
 
   document.getElementById('mTitle').textContent = c.title;
@@ -789,36 +947,69 @@ function openModal(svc) {
   const manualSection = document.getElementById('mManualSection');
   const saveBtn       = document.getElementById('mSaveBtn');
   const oauthBtn      = document.getElementById('mOAuthBtn');
+  const actions       = document.getElementById('mActions');
+  const loadingSec    = document.getElementById('mLoadingSection');
+  const successSec    = document.getElementById('mSuccessSection');
+  const dzTabs        = document.getElementById('mDeezerTabs');
+  const dzOAuthSec    = document.getElementById('mDzOAuthSection');
 
-  if (useOAuth) {
-    // Pre-configured: just show a login button, no inputs needed
+  // Reset all sections
+  loadingSec.style.display = 'none';
+  successSec.style.display = 'none';
+  dzTabs.style.display     = 'none';
+  dzOAuthSec.style.display = 'none';
+  actions.style.display    = 'flex';
+
+  // ── Deezer: special handling with tabs ──
+  if (svc === 'dz') {
+    oauthSection.style.display = 'none';
+
+    if (useDzOAuth) {
+      // Show tabs: OAuth (primary) + ARL (fallback)
+      dzTabs.style.display = '';
+      document.getElementById('mDesc').innerHTML = 'Log in with your Deezer account to import your favorite artists. Alternatively, use the ARL cookie method.';
+      switchDzTab('oauth'); // default to OAuth tab
+    } else {
+      // No server config: ARL only
+      manualSection.style.display = '';
+      saveBtn.style.display = '';
+      saveBtn.textContent = 'Save';
+      document.getElementById('mInput').placeholder = c.placeholder;
+      document.getElementById('mInput').value = state.keys.dz || '';
+      document.getElementById('mInput2Wrap').style.display = 'none';
+    }
+  }
+  // ── Spotify / Last.fm with pre-configured OAuth ──
+  else if (useOAuth) {
     oauthSection.style.display  = '';
     manualSection.style.display = 'none';
     saveBtn.style.display       = 'none';
     if (useSpOAuth) {
-      oauthBtn.textContent = state.spToken ? '🎵 Reconnect Spotify' : '🎵 Login with Spotify';
-      oauthBtn.className   = 'b-oauth';
+      oauthBtn.innerHTML = svgSpotifyIcon(16) + ' ' +
+        (state.spToken ? 'Reconnect Spotify' : 'Login with Spotify');
+      oauthBtn.className = 'b-oauth sp-btn';
     } else {
-      oauthBtn.textContent = state.lfSession ? `🎵 Reconnect Last.fm` : '🎵 Login with Last.fm';
-      oauthBtn.className   = 'b-oauth lf-btn';
+      oauthBtn.innerHTML = svgLastfmIcon(16) + ' ' +
+        (state.lfSession ? 'Reconnect Last.fm' : 'Login with Last.fm');
+      oauthBtn.className = 'b-oauth lf-btn';
     }
-  } else {
-    // Manual key entry (API-key services, or OAuth fallback when no server config)
+  }
+  // ── Manual key entry (fallback) ──
+  else {
     oauthSection.style.display  = 'none';
     manualSection.style.display = '';
     saveBtn.style.display       = '';
 
     document.getElementById('mInput').placeholder = c.placeholder || '';
     document.getElementById('mInput').value = svc === 'lf' ? (state.lfKey || '') : (state.keys[svc] || '');
-    // Second input (Last.fm Shared Secret only)
     const wrap2 = document.getElementById('mInput2Wrap');
     wrap2.style.display = svc === 'lf' ? '' : 'none';
     document.getElementById('mInput2Label').textContent = c.label2 || 'API Key';
     document.getElementById('mInput2').placeholder = c.placeholder2 || '';
     document.getElementById('mInput2').value = svc === 'lf' ? (state.lfSecret || '') : '';
     saveBtn.textContent =
-      svc === 'lf' ? '🎵 Login with Last.fm →' :
-      svc === 'sp' ? '🎵 Login with Spotify →' :
+      svc === 'lf' ? 'Login with Last.fm' :
+      svc === 'sp' ? 'Login with Spotify' :
       'Save';
     setTimeout(() => document.getElementById('mInput').focus(), 80);
   }
@@ -831,11 +1022,15 @@ function closeModalOutside(e) { if (e.target === document.getElementById('modalE
 // Called by the pre-configured OAuth button — opens service login in a popup
 function startModalOAuth() {
   const s = state.modal;
-  closeModal();
   if (s === 'sp') {
     openSpotifyPopup(appConfig.spotifyClientId);
+    showModalLoading('Waiting for Spotify...');
   } else if (s === 'lf') {
     openLastFmPopup(appConfig.lastfmApiKey);
+    showModalLoading('Waiting for Last.fm...');
+  } else if (s === 'dz') {
+    openDeezerPopup(appConfig.deezerAppId);
+    showModalLoading('Waiting for Deezer...');
   }
 }
 
@@ -1005,8 +1200,8 @@ async function generateCodeChallenge(verifier) {
 async function openSpotifyPopup(clientId) {
   const verifier  = generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
-  // Store verifier in parent's sessionStorage — the popup will send the code back
-  // and the parent will use this verifier to exchange it for a token.
+  const oauthState = generateOAuthState('sp');
+
   sessionStorage.setItem('sp_popup_verifier', verifier);
   sessionStorage.setItem('sp_popup_client_id', clientId);
 
@@ -1016,15 +1211,27 @@ async function openSpotifyPopup(clientId) {
     redirect_uri: spRedirectUri(),
     scope: 'user-top-read',
     code_challenge_method: 'S256',
-    code_challenge: challenge
+    code_challenge: challenge,
+    state: oauthState
   });
   const url = 'https://accounts.spotify.com/authorize?' + params;
   const popup = window.open(url, 'SpotifyLogin', 'width=460,height=640,scrollbars=yes,resizable=yes');
   if (!popup) {
-    // Popup blocked — fall back to full-page redirect
     sessionStorage.setItem('sp_verifier', verifier);
     sessionStorage.setItem('sp_client_id', clientId);
     window.location.href = url;
+  } else {
+    const pollTimer = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(pollTimer);
+        const loadingSec = document.getElementById('mLoadingSection');
+        if (loadingSec && loadingSec.style.display !== 'none') {
+          loadingSec.style.display = 'none';
+          document.getElementById('mOAuthSection').style.display = '';
+          document.getElementById('mActions').style.display = 'flex';
+        }
+      }
+    }, 500);
   }
 }
 
@@ -1045,11 +1252,14 @@ async function exchangeSpotifyCode(code, verifier, clientId) {
     });
   } catch(e) {
     console.error('Spotify token exchange network error:', e.message);
+    showModalError('Spotify authorization failed (network error). Please try again.');
     return;
   }
   const data = await res.json();
   if (!res.ok || data.error) {
-    console.error(`Spotify token exchange failed — ${data.error}: ${data.error_description}`);
+    const msg = `Spotify token exchange failed: ${data.error}: ${data.error_description}`;
+    console.error(msg);
+    showModalError(msg);
     return;
   }
   state.keys.sp       = clientId;
@@ -1065,6 +1275,11 @@ async function handleSpotifyCallback() {
   const params = new URLSearchParams(window.location.search);
   const code  = params.get('code');
   const error = params.get('error');
+  const receivedState = params.get('state');
+
+  // Only handle if this looks like a Spotify callback (state starts with sp_ or no state for legacy)
+  if (receivedState && !receivedState.startsWith('sp_')) return;
+
   if (code || error) window.history.replaceState({}, '', window.location.pathname);
 
   if (error) {
@@ -1079,19 +1294,27 @@ async function handleSpotifyCallback() {
   if (!code) return;
 
   if (_IS_POPUP_CB && window.opener) {
-    // Popup mode: send code to parent (parent holds the PKCE verifier)
-    window.opener.postMessage({ type: 'spotify_code', code }, window.location.origin);
+    window.opener.postMessage(
+      { type: 'spotify_code', code, state: receivedState },
+      window.location.origin
+    );
     document.body.style.cssText =
       'margin:0;height:100vh;background:#0a0a0a;display:flex;align-items:center;justify-content:center';
     document.body.innerHTML =
       '<div style="text-align:center;font-family:\'DM Mono\',monospace;color:#4ade80">' +
-      '<div style="font-size:1.8rem;margin-bottom:10px">✓</div>' +
-      '<div style="font-size:.6rem;letter-spacing:.14em;opacity:.55">AUTHORIZED · CLOSING</div></div>';
+      '<div style="font-size:1.8rem;margin-bottom:10px">&#10003;</div>' +
+      '<div style="font-size:.6rem;letter-spacing:.14em;opacity:.55">AUTHORIZED &middot; CLOSING</div></div>';
     setTimeout(() => window.close(), 700);
     return;
   }
 
-  // Non-popup: full-page redirect fallback (popup was blocked)
+  // Non-popup redirect fallback: validate state locally
+  if (receivedState && !validateOAuthState('sp', receivedState)) {
+    console.error('Spotify CSRF state validation failed.');
+    showEmpty('Spotify authorization failed: security state mismatch. Please try again.');
+    return;
+  }
+
   const verifier = sessionStorage.getItem('sp_verifier');
   const clientId = sessionStorage.getItem('sp_client_id');
   sessionStorage.removeItem('sp_verifier');
@@ -1117,15 +1340,30 @@ function lfApiSig(params, secret) {
 
 // ── Open Last.fm login popup ───────────────────────────────────────
 function openLastFmPopup(apiKey) {
-  // Store api_key in parent's sessionStorage for use in completeLastFmAuth()
   sessionStorage.setItem('lf_popup_api_key', apiKey);
-  sessionStorage.setItem('lf_api_key', apiKey); // also kept for redirect fallback
-  const cbUrl = lfRedirectUri();
+  sessionStorage.setItem('lf_api_key', apiKey);
+
+  // Last.fm's auth endpoint does not natively support a state parameter,
+  // so we encode the CSRF state into the callback URL as a query parameter.
+  const oauthState = generateOAuthState('lf');
+  const cbUrl = lfRedirectUri() + '?lf_state=' + encodeURIComponent(oauthState);
+
   const url = `https://www.last.fm/api/auth/?api_key=${encodeURIComponent(apiKey)}&cb=${encodeURIComponent(cbUrl)}`;
   const popup = window.open(url, 'LastFmLogin', 'width=460,height=640,scrollbars=yes,resizable=yes');
   if (!popup) {
-    // Popup blocked — fall back to full-page redirect
     window.location.href = url;
+  } else {
+    const pollTimer = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(pollTimer);
+        const loadingSec = document.getElementById('mLoadingSection');
+        if (loadingSec && loadingSec.style.display !== 'none') {
+          loadingSec.style.display = 'none';
+          document.getElementById('mOAuthSection').style.display = '';
+          document.getElementById('mActions').style.display = 'flex';
+        }
+      }
+    }, 500);
   }
 }
 
@@ -1150,16 +1388,16 @@ async function completeLastFmAuth(token) {
       });
     } catch(e) {
       console.error('Last.fm server auth error:', e.message);
-      showEmpty('Last.fm authorization failed (network error). Please try again.');
+      showModalError('Last.fm authorization failed (network error). Please try again.');
       return;
     }
     let data;
     try { data = await res.json(); }
-    catch { console.error('Last.fm server auth returned non-JSON.'); return; }
+    catch { console.error('Last.fm server auth returned non-JSON.'); showModalError('Last.fm authorization failed (invalid response).'); return; }
     if (!res.ok || data.error) {
       const msg = data.error?.message || data.error || JSON.stringify(data);
       console.error('Last.fm server auth failed:', msg);
-      showEmpty(`Last.fm authorization failed: ${esc(String(msg))}. Please try again.`);
+      showModalError(`Last.fm authorization failed: ${esc(String(msg))}. Please try again.`);
       return;
     }
     state.lfKey    = apiKey;
@@ -1180,15 +1418,15 @@ async function completeLastFmAuth(token) {
       );
     } catch(e) {
       console.error('Last.fm client auth error:', e.message);
-      showEmpty('Last.fm authorization failed (network error). Please try again.');
+      showModalError('Last.fm authorization failed (network error). Please try again.');
       return;
     }
     let data;
     try { data = await res.json(); }
-    catch { console.error('Last.fm client auth non-JSON.'); return; }
+    catch { console.error('Last.fm client auth non-JSON.'); showModalError('Last.fm authorization failed (invalid response).'); return; }
     if (data.error) {
       console.error(`Last.fm auth.getSession error ${data.error}: ${data.message}`);
-      showEmpty(`Last.fm authorization failed (${esc(data.message)}). Please try again.`);
+      showModalError(`Last.fm authorization failed (${esc(data.message)}). Please try again.`);
       return;
     }
     state.lfKey     = apiKey;
@@ -1198,7 +1436,7 @@ async function completeLastFmAuth(token) {
 
   } else {
     console.error('Last.fm: no API key or secret available for exchange.');
-    showEmpty('Last.fm: credentials missing. Please try connecting again.');
+    showModalError('Last.fm: credentials missing. Please try connecting again.');
     return;
   }
 
@@ -1214,16 +1452,61 @@ function setupPopupListener() {
   window.addEventListener('message', async function(e) {
     if (e.origin !== window.location.origin) return;
     const d = e.data;
+
     if (d.type === 'spotify_code') {
+      // Validate CSRF state
+      if (d.state && !validateOAuthState('sp', d.state)) {
+        console.error('Spotify popup: CSRF state mismatch.');
+        showModalError('Spotify authorization failed: security state mismatch.');
+        return;
+      }
+      if (document.getElementById('modalEl').classList.contains('open')) {
+        showModalLoading('Exchanging Spotify token...');
+      }
       const verifier = sessionStorage.getItem('sp_popup_verifier');
       const clientId = sessionStorage.getItem('sp_popup_client_id');
       sessionStorage.removeItem('sp_popup_verifier');
       sessionStorage.removeItem('sp_popup_client_id');
-      if (verifier && clientId) await exchangeSpotifyCode(d.code, verifier, clientId);
+      if (verifier && clientId) {
+        await exchangeSpotifyCode(d.code, verifier, clientId);
+        if (state.spToken && document.getElementById('modalEl').classList.contains('open')) {
+          showModalSuccess('Spotify connected!');
+        }
+      }
     } else if (d.type === 'lastfm_token') {
+      // Validate CSRF state for Last.fm
+      if (d.state && !validateOAuthState('lf', d.state)) {
+        console.error('Last.fm popup: CSRF state mismatch.');
+        showModalError('Last.fm authorization failed: security state mismatch.');
+        return;
+      }
+      if (document.getElementById('modalEl').classList.contains('open')) {
+        showModalLoading('Exchanging Last.fm session...');
+      }
       await completeLastFmAuth(d.token);
+      if (state.lfSession && document.getElementById('modalEl').classList.contains('open')) {
+        showModalSuccess(state.lfUser + ' connected!');
+      }
+    } else if (d.type === 'deezer_code') {
+      // Validate CSRF state for Deezer
+      if (d.state && !validateOAuthState('dz', d.state)) {
+        console.error('Deezer popup: CSRF state mismatch.');
+        showModalError('Deezer authorization failed: security state mismatch.');
+        return;
+      }
+      if (document.getElementById('modalEl').classList.contains('open')) {
+        showModalLoading('Exchanging Deezer token...');
+      }
+      await completeDeezerOAuth(d.code);
+      if (state.dzToken && document.getElementById('modalEl').classList.contains('open')) {
+        showModalSuccess('Deezer connected!');
+      }
     } else if (d.type === 'spotify_error') {
       console.warn('Spotify OAuth denied:', d.error);
+      showModalError('Spotify authorization denied: ' + (d.error || 'unknown error'));
+    } else if (d.type === 'deezer_error') {
+      console.warn('Deezer OAuth denied:', d.error);
+      showModalError('Deezer authorization denied: ' + (d.error || 'unknown error'));
     }
   });
 }
@@ -1232,23 +1515,32 @@ function setupPopupListener() {
 async function handleLastFmCallback() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get('token');
+  const lfState = params.get('lf_state');
   if (!token) return;
   window.history.replaceState({}, '', window.location.pathname);
 
   if (_IS_POPUP_CB && window.opener) {
-    // Popup mode: relay token to parent, show success, close
-    window.opener.postMessage({ type: 'lastfm_token', token }, window.location.origin);
+    window.opener.postMessage(
+      { type: 'lastfm_token', token, state: lfState },
+      window.location.origin
+    );
     document.body.style.cssText =
       'margin:0;height:100vh;background:#0a0a0a;display:flex;align-items:center;justify-content:center';
     document.body.innerHTML =
       '<div style="text-align:center;font-family:\'DM Mono\',monospace;color:#4ade80">' +
-      '<div style="font-size:1.8rem;margin-bottom:10px">✓</div>' +
-      '<div style="font-size:.6rem;letter-spacing:.14em;opacity:.55">AUTHORIZED · CLOSING</div></div>';
+      '<div style="font-size:1.8rem;margin-bottom:10px">&#10003;</div>' +
+      '<div style="font-size:.6rem;letter-spacing:.14em;opacity:.55">AUTHORIZED &middot; CLOSING</div></div>';
     setTimeout(() => window.close(), 700);
     return;
   }
 
-  // Non-popup: full-page redirect fallback (popup was blocked)
+  // Non-popup: validate CSRF state
+  if (lfState && !validateOAuthState('lf', lfState)) {
+    console.error('Last.fm CSRF state validation failed.');
+    showEmpty('Last.fm authorization failed: security state mismatch. Please try again.');
+    return;
+  }
+
   await completeLastFmAuth(token);
 }
 
@@ -1332,6 +1624,36 @@ async function fetchSpotifyArtists() {
 
 // ── API: Deezer favorite artists (via Netlify proxy → Deezer internal API) ──
 async function fetchDeezerArtists(arl) {
+  // ── OAuth path: use public API with access_token ──
+  if (state.dzToken) {
+    if (state.dzTokenExpiry && Date.now() >= state.dzTokenExpiry) {
+      state.dzToken = null;
+      activateSourceUI('dz', 'Favorite artists · token expired');
+      throw new Error('Your Deezer session expired. Click the Deezer "Connect" button to log in again.');
+    }
+    let res;
+    try {
+      res = await fetch('https://api.deezer.com/user/me/artists?limit=500&access_token=' + encodeURIComponent(state.dzToken));
+    } catch (e) {
+      throw new Error('Network error reaching Deezer API: ' + e.message);
+    }
+    if (!res.ok) {
+      throw new Error('Deezer API returned HTTP ' + res.status + '. Token may be expired.');
+    }
+    let data;
+    try { data = await res.json(); }
+    catch { throw new Error('Deezer API returned non-JSON.'); }
+    if (data.error) {
+      throw new Error('Deezer API error: ' + (data.error.message || JSON.stringify(data.error)));
+    }
+    const artists = (data.data || []).map(a => a.name).filter(Boolean);
+    if (artists.length === 0) {
+      throw new Error('Deezer returned 0 favorite artists. Add artists to your favorites on deezer.com.');
+    }
+    return artists;
+  }
+
+  // ── ARL cookie path (existing implementation) ──
   // /deezer-proxy is a Netlify Function that forwards requests to
   // deezer.com/ajax/gw-light.php with the ARL injected as a Cookie server-side.
   const GW = '/deezer-proxy';
@@ -1451,6 +1773,131 @@ async function fetchDeezerArtists(arl) {
   return artists;
 }
 
+// ── Deezer OAuth 2.0 ───────────────────────────────────────────────
+function dzRedirectUri() {
+  return window.location.origin + '/callbacks';
+}
+
+function openDeezerPopup(appId) {
+  const oauthState = generateOAuthState('dz');
+  sessionStorage.setItem('dz_popup_app_id', appId);
+
+  const params = new URLSearchParams({
+    app_id: appId,
+    redirect_uri: dzRedirectUri(),
+    perms: 'basic_access,email,manage_library',
+    state: oauthState
+  });
+  const url = 'https://connect.deezer.com/oauth/auth.php?' + params;
+
+  const popup = window.open(url, 'DeezerLogin', 'width=460,height=640,scrollbars=yes,resizable=yes');
+  if (!popup) {
+    window.location.href = url;
+  } else {
+    const pollTimer = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(pollTimer);
+        const loadingSec = document.getElementById('mLoadingSection');
+        if (loadingSec && loadingSec.style.display !== 'none') {
+          loadingSec.style.display = 'none';
+          document.getElementById('mDzOAuthSection').style.display = '';
+          document.getElementById('mDeezerTabs').style.display = '';
+          document.getElementById('mActions').style.display = 'flex';
+        }
+      }
+    }, 500);
+  }
+}
+
+async function handleDeezerCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code  = params.get('code');
+  const error = params.get('error_reason');
+  const receivedState = params.get('state');
+
+  // Only handle if this looks like a Deezer callback (state starts with dz_)
+  const isDeezer = receivedState && receivedState.startsWith('dz_');
+  if (!isDeezer) return;
+
+  if (code || error) window.history.replaceState({}, '', window.location.pathname);
+
+  if (error) {
+    if (_IS_POPUP_CB && window.opener) {
+      window.opener.postMessage({ type: 'deezer_error', error }, window.location.origin);
+      setTimeout(() => window.close(), 400);
+    } else {
+      console.warn('Deezer OAuth cancelled or denied:', error);
+    }
+    return;
+  }
+  if (!code) return;
+
+  if (_IS_POPUP_CB && window.opener) {
+    window.opener.postMessage(
+      { type: 'deezer_code', code, state: receivedState },
+      window.location.origin
+    );
+    document.body.style.cssText =
+      'margin:0;height:100vh;background:#0a0a0a;display:flex;align-items:center;justify-content:center';
+    document.body.innerHTML =
+      '<div style="text-align:center;font-family:\'DM Mono\',monospace;color:#4ade80">' +
+      '<div style="font-size:1.8rem;margin-bottom:10px">&#10003;</div>' +
+      '<div style="font-size:.6rem;letter-spacing:.14em;opacity:.55">AUTHORIZED &middot; CLOSING</div></div>';
+    setTimeout(() => window.close(), 700);
+    return;
+  }
+
+  // Non-popup redirect fallback: validate state
+  if (receivedState && !validateOAuthState('dz', receivedState)) {
+    console.error('Deezer CSRF state validation failed.');
+    showEmpty('Deezer authorization failed: security state mismatch. Please try again.');
+    return;
+  }
+
+  await completeDeezerOAuth(code);
+}
+
+async function completeDeezerOAuth(code) {
+  let res;
+  try {
+    res = await fetch('/api/deezer-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, redirect_uri: dzRedirectUri() })
+    });
+  } catch (e) {
+    console.error('Deezer token exchange network error:', e.message);
+    showModalError('Deezer authorization failed (network error). Please try again.');
+    return;
+  }
+
+  let data;
+  try { data = await res.json(); }
+  catch {
+    console.error('Deezer auth returned non-JSON.');
+    showModalError('Deezer authorization failed (invalid server response).');
+    return;
+  }
+
+  if (!res.ok || data.error) {
+    const msg = data.error || 'Unknown error';
+    console.error('Deezer auth failed:', msg);
+    showModalError('Deezer authorization failed: ' + msg);
+    return;
+  }
+
+  state.dzToken = data.access_token;
+  state.dzUser  = data.user_name || 'Deezer User';
+  if (data.expires) {
+    state.dzTokenExpiry = Date.now() + parseInt(data.expires) * 1000;
+  }
+  // Also store the token as the "key" for cache fingerprinting
+  state.keys.dz = 'oauth:' + data.access_token.slice(0, 8);
+  clearCache();
+  activateSourceUI('dz', (state.dzUser ? esc(state.dzUser) + ' · ' : '') + 'connected via OAuth');
+  console.log('Deezer OAuth authorized for ' + state.dzUser);
+}
+
 // ── API: Last.fm top artists (uses OAuth session from state) ───────
 async function fetchLastFmArtists() {
   if (!state.lfSession || !state.lfUser || !state.lfKey) {
@@ -1566,7 +2013,7 @@ function renderArtistSummary(spArtists, lfArtists, dzArtists, errors) {
   const connected = [
     { key: 'sp', label: '🎵 Spotify', artists: spArtists, chipCls: 'chip-sp', divCls: 'as-sp', active: !!state.spToken },
     { key: 'lf', label: '◎ Last.fm',  artists: lfArtists, chipCls: 'chip-lf', divCls: 'as-lf', active: !!state.lfSession },
-    { key: 'dz', label: '🎧 Deezer',  artists: dzArtists, chipCls: 'chip-dz', divCls: 'as-dz', active: !!state.keys.dz },
+    { key: 'dz', label: '🎧 Deezer',  artists: dzArtists, chipCls: 'chip-dz', divCls: 'as-dz', active: !!(state.dzToken || state.keys.dz) },
   ].filter(s => s.active);
   if (!connected.length) { panel.innerHTML = ''; panel.className = ''; return; }
 
@@ -1713,7 +2160,7 @@ async function searchConcerts() {
 
   // ── Step 3: Spotify / Last.fm / Deezer → build liked-artist set ──
   let likedArtists = new Set();
-  if (state.spToken || state.lfSession || state.keys.dz) {
+  if (state.spToken || state.lfSession || state.keys.dz || state.dzToken) {
     showEmpty('Fetching your artists from music services...');
 
     const [spResult, lfResult, dzResult] = await Promise.all([
@@ -1723,7 +2170,7 @@ async function searchConcerts() {
       state.lfSession
         ? fetchLastFmArtists().then(a => ({ ok: true, artists: a })).catch(e => ({ ok: false, svc: 'Last.fm', msg: e.message }))
         : Promise.resolve({ ok: true, artists: [] }),
-      state.keys.dz
+      (state.dzToken || state.keys.dz)
         ? fetchDeezerArtists(state.keys.dz).then(a => ({ ok: true, artists: a })).catch(e => ({ ok: false, svc: 'Deezer', msg: e.message }))
         : Promise.resolve({ ok: true, artists: [] })
     ]);
@@ -1743,7 +2190,7 @@ async function searchConcerts() {
     if (lfResult.ok && lfArtists.length)  searchLog('✓ Last.fm: ' + lfArtists.length + ' artists', 'ok');
     else if (lfResult.ok && state.lfSession) searchLog('⚠ Last.fm: 0 artists returned', 'warn');
     if (dzResult.ok && dzArtists.length)  searchLog('✓ Deezer: ' + dzArtists.length + ' artists', 'ok');
-    else if (dzResult.ok && state.keys.dz)  searchLog('⚠ Deezer: 0 artists returned', 'warn');
+    else if (dzResult.ok && (state.dzToken || state.keys.dz))  searchLog('⚠ Deezer: 0 artists returned', 'warn');
     renderArtistSummary(spArtists, lfArtists, dzArtists, errors);
 
     if (likedArtists.size === 0) {
@@ -1949,6 +2396,7 @@ if (_IS_POPUP_CB) {
   // no need to load config or set up the full app.
   handleSpotifyCallback();
   handleLastFmCallback();
+  handleDeezerCallback();
 } else {
   // Normal page load: set up popup message listener first, then load config
   // so the modal buttons know whether pre-configured OAuth is available.
@@ -1956,6 +2404,7 @@ if (_IS_POPUP_CB) {
   loadConfig().then(() => {
     handleSpotifyCallback(); // handles any redirect-fallback code in URL
     handleLastFmCallback();  // handles any redirect-fallback token in URL
+    handleDeezerCallback();  // handles any redirect-fallback code in URL
   });
 }
 
