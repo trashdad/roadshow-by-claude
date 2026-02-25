@@ -382,7 +382,7 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
       <div class="ig" id="stopsSection">
         <div class="il"><span class="dot dm"></span> Stops</div>
         <div id="stopsList">
-          <div class="stop-row" data-index="0">
+          <div class="stop-row">
             <input type="text" class="stop-input" placeholder="e.g. Memphis, TN"/>
             <button class="stop-add-btn" onclick="addStopInput()" title="Add another stop">+</button>
           </div>
@@ -655,6 +655,62 @@ function removeStopInput(btn) {
     addBtn.onclick = () => addStopInput();
     lastRow.appendChild(addBtn);
   }
+}
+
+// ── Dynamic Stop Inputs ────────────────────────────────────────────
+const MAX_EXTRA_STOPS = 25;
+
+function addStopInput() {
+  const list = document.getElementById('stopsList');
+  const rows = list.querySelectorAll('.stop-row');
+  if (rows.length >= MAX_EXTRA_STOPS + 1) return;
+
+  const lastRow = rows[rows.length - 1];
+  const lastAddBtn = lastRow.querySelector('.stop-add-btn');
+  if (lastAddBtn) {
+    lastAddBtn.classList.replace('stop-add-btn', 'stop-rm-btn');
+    lastAddBtn.textContent = '−';
+    lastAddBtn.title = 'Remove this stop';
+    lastAddBtn.onclick = () => removeStopInput(lastAddBtn);
+  }
+
+  const newRow = document.createElement('div');
+  newRow.className = 'stop-row';
+  newRow.style.animation = 'stopSlideIn .2s ease both';
+  newRow.innerHTML = `<input type="text" class="stop-input" placeholder="e.g. Baton Rouge, LA"/>` +
+    (rows.length < MAX_EXTRA_STOPS
+      ? `<button class="stop-add-btn" onclick="addStopInput()" title="Add another stop">+</button>`
+      : ``);
+  list.appendChild(newRow);
+  
+  // Attach save listener to new input
+  newRow.querySelector('input').addEventListener('input', saveSession);
+  saveSession();
+}
+
+function removeStopInput(btn) {
+  const list = document.getElementById('stopsList');
+  const row = btn.closest('.stop-row');
+  row.remove();
+
+  const rows = list.querySelectorAll('.stop-row');
+  if (rows.length === 0) return;
+  const lastRow = rows[rows.length - 1];
+  const existingRm = lastRow.querySelector('.stop-rm-btn');
+  if (existingRm) {
+    existingRm.classList.replace('stop-rm-btn', 'stop-add-btn');
+    existingRm.textContent = '+';
+    existingRm.title = 'Add another stop';
+    existingRm.onclick = () => addStopInput();
+  } else if (!lastRow.querySelector('.stop-add-btn')) {
+    const addBtn = document.createElement('button');
+    addBtn.className = 'stop-add-btn';
+    addBtn.textContent = '+';
+    addBtn.title = 'Add another stop';
+    addBtn.onclick = () => addStopInput();
+    lastRow.appendChild(addBtn);
+  }
+  saveSession();
 }
 
 // ── Constants ──────────────────────────────────────────────────────
@@ -2209,8 +2265,8 @@ function toggleArtistSummary(btn) {
 async function searchConcerts() {
   const sc = document.getElementById('startCity').value.trim();
   const ec = document.getElementById('endCity').value.trim();
-  const st = Array.from(document.querySelectorAll('#stopsList .stop-input'))
-    .map(i => i.value.trim()).filter(Boolean).join(',');
+  const st = Array.from(document.querySelectorAll('.stop-input'))
+    .map(i => i.value.trim()).filter(Boolean);
   const ds = document.getElementById('dateStart').value;
   const de = document.getElementById('dateEnd').value;
 
@@ -2226,7 +2282,9 @@ async function searchConcerts() {
   const dtD = new Date(de+'T00:00:00'); dtD.setDate(dtD.getDate()+buf);
   const df = fd(dfD), dt = fd(dtD);
 
-  const names = [sc, ...st.split(',').map(s=>s.trim()).filter(Boolean), ec];
+  // Build the list of cities (Start, all Stops, End)
+  const names = [sc, ...st, ec];
+
   const ck = cacheKey(names, rad, state.keys);
 
   // ── CACHE HIT: same route+radius+keys, cached dates cover the request ──
@@ -2391,6 +2449,19 @@ async function searchConcerts() {
     );
     concerts = dedupe(batches.flat());
     console.log('✓ API results:', concerts.length, 'shows after dedup');
+
+    // Strict radius filter: ensure each show is actually within 'rad' miles of at least one waypoint
+    const originalCount = concerts.length;
+    concerts = concerts.filter(c => {
+      return waypoints.some(wp => {
+        const dKm = hav(c.lat, c.lon, wp.lat, wp.lon);
+        return (dKm * 0.621371) <= (rad + 0.5); // 0.5mi margin for minor geocoding diffs
+      });
+    });
+    if (concerts.length < originalCount) {
+      console.log(`✂ Filtered out ${originalCount - concerts.length} shows outside the strict ${rad}mi radius`);
+    }
+
     searchLog('✓ ' + concerts.length + ' shows found on route', 'ok');
 
     // Filter to liked artists when Spotify/Deezer is connected
