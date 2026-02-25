@@ -121,6 +121,12 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
   color:var(--text2);transition:all .18s;white-space:nowrap;}
 .api-btn:hover{border-color:var(--accent);color:var(--accent);}
 .api-row.on .api-btn{border-color:rgba(74,222,128,.3);color:var(--green);}
+.api-btn-group{display:flex;gap:4px;}
+.api-btn-sp-login{font-family:'DM Mono',monospace;font-size:.52rem;padding:3px 8px;border-radius:var(--r);
+  cursor:pointer;letter-spacing:.05em;border:1px solid var(--spotify);background:var(--spotify);
+  color:#000;font-weight:700;transition:all .18s;white-space:nowrap;}
+.api-btn-sp-login:hover{background:var(--spotify-hover);border-color:var(--spotify-hover);}
+.api-row.on .api-btn-sp-login{background:var(--spotify);border-color:var(--spotify);color:#000;}
 .api-divider{font-size:.44rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);
   padding:3px 0;text-align:center;opacity:.5;}
 
@@ -437,7 +443,10 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
             <div class="api-name">Spotify</div>
             <div class="api-note" id="note-sp">Top artists · not connected</div>
           </div>
-          <button class="api-btn" onclick="openModal('sp')">Connect</button>
+          <div class="api-btn-group">
+            <button class="api-btn-sp-login" onclick="openSpLogin()">Login</button>
+            <button class="api-btn" onclick="openModal('sp','clientid')">Client ID</button>
+          </div>
         </div>
         <div class="api-row dim" id="row-dz">
           <div class="api-ico"><svg viewBox="0 0 24 24" fill="#A238FF"><path d="M18.81 4.16v3.03H24V4.16h-5.19zM6.27 8.38v3.027h5.19V8.38H6.27zm12.54 0v3.027H24V8.38h-5.19zM6.27 12.566v3.027h5.19v-3.027H6.27zm6.27 0v3.027h5.19v-3.027h-5.19zm6.27 0v3.027H24v-3.027h-5.19zM0 16.752V19.8h5.19v-3.048H0zm6.27 0V19.8h5.19v-3.048H6.27zm6.27 0V19.8h5.19v-3.048h-5.19zm6.27 0V19.8H24v-3.048h-5.19z"/></svg></div>
@@ -935,8 +944,25 @@ function hav(la1,lo1,la2,lo2) {
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
+// ── Spotify tile LOGIN button ────────────────────────────────────
+function openSpLogin() {
+  if (appConfig?.spotifyClientId) {
+    openSpotifyPopup(appConfig.spotifyClientId);
+  } else {
+    openModal('sp');
+  }
+}
+
+const SP_CLIENTID_DESC =
+  '<strong style="color:var(--text)">Step 1:</strong> Create a free app at ' +
+  '<a href="https://developer.spotify.com/dashboard" target="_blank" style="color:var(--accent);text-decoration:none">developer.spotify.com/dashboard</a>.' +
+  '<br><br>' +
+  '<strong style="color:var(--text)">Step 2:</strong> In your app\'s settings, add this <strong>Redirect URI</strong>:' +
+  '<div style="margin:6px 0;padding:6px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--accent);font-size:.55rem;word-break:break-all;font-family:\'DM Mono\',monospace;user-select:all">https://oldroadnewmusic.netlify.app/callbacks</div>' +
+  '<strong style="color:var(--text)">Step 3:</strong> Copy your <strong style="color:var(--accent)">Client ID</strong> from the app dashboard and paste it below.';
+
 // ── Modal ──────────────────────────────────────────────────────────
-function openModal(svc) {
+function openModal(svc, mode) {
   state.modal = svc;
   const c = MCFG[svc];
   clearModalError();
@@ -970,7 +996,12 @@ function openModal(svc) {
 
   // ── Spotify: always show server OAuth button (if configured) + manual client ID entry ──
   if (svc === 'sp') {
-    if (useSpOAuth) {
+    if (mode === 'clientid') {
+      // CLIENT ID mode: skip server OAuth, show only manual entry with detailed instructions
+      spOAuthSection.style.display = 'none';
+      document.getElementById('mTitle').textContent = 'Spotify Client ID';
+      document.getElementById('mDesc').innerHTML = SP_CLIENTID_DESC;
+    } else if (useSpOAuth) {
       spOAuthSection.style.display = '';
       document.getElementById('mSpOAuthBtn').innerHTML = svgSpotifyIcon(16) + ' ' +
         (state.spToken ? 'Reconnect Spotify' : 'Login with Spotify');
