@@ -110,6 +110,9 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
   border:1px solid var(--border);border-radius:var(--r);transition:all .25s;}
 .api-row:hover{border-color:var(--text3);}
 .api-row.on{border-color:rgba(74,222,128,.4);}
+.api-row.err{border-color:rgba(255,92,56,.5);background:rgba(255,92,56,.03);}
+.api-row.err .api-name{color:var(--accent2);}
+.api-row.err .api-note{color:var(--accent2);opacity:1;}
 .api-row.dim{opacity:.35;}
 .api-ico{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .api-ico svg{width:16px;height:16px;}
@@ -703,6 +706,15 @@ async function loadConfig() {
       if (appConfig.deezerAppId) {
         MCFG.dz.desc = 'Log in with your Deezer account. Your favorite artists will be matched to shows along your route.';
       }
+      // Auto-apply Ticketmaster/Jambase keys if set in Netlify
+      if (appConfig.ticketmasterKey && !state.keys.tm) {
+        state.keys.tm = appConfig.ticketmasterKey;
+        activateSourceUI('tm', 'Major shows · connected via server ✓');
+      }
+      if (appConfig.jambaseKey && !state.keys.jb) {
+        state.keys.jb = appConfig.jambaseKey;
+        activateSourceUI('jb', 'Indie venues · connected via server ✓');
+      }
     } else {
       appConfig = {};
     }
@@ -1285,6 +1297,10 @@ async function fetchTM(lat, lon, radius, df, dt, key) {
   try {
     const r = await fetch(url);
     const d = await r.json();
+    if (d.fault || d.error) {
+      activateSourceUI('tm', 'Connection error: check API key', true);
+      return [];
+    }
     return (d?._embedded?.events || []).map(e => ({
       id:'tm-'+e.id, source:'tm',
       artist: e.name,
@@ -1307,6 +1323,10 @@ async function fetchJB(lat, lon, radius, df, dt, key) {
   try {
     const r = await fetch(url);
     const d = await r.json();
+    if (d.errors || d.error) {
+      activateSourceUI('jb', 'Connection error: check API key', true);
+      return [];
+    }
     return (d?.events || []).map(e => ({
       id:'jb-'+e.identifier, source:'jb',
       artist:   (e.performer||[]).map(p=>p.name).join(', ') || 'Unknown',
@@ -1331,6 +1351,10 @@ async function fetchEB(lat, lon, radius, df, dt, token) {
   try {
     const r = await fetch(url);
     const d = await r.json();
+    if (d.error || d.error_description) {
+      activateSourceUI('eb', 'Connection error: check private token', true);
+      return [];
+    }
     return (d?.events || []).map(e => ({
       id:'eb-'+e.id, source:'eb',
       artist:   e.name?.text || 'Event',
@@ -1667,12 +1691,22 @@ function setupPopupListener() {
   });
 }
 
-function activateSourceUI(svc, note) {
-  document.getElementById('row-'+svc).classList.add('on');
-  document.getElementById('row-'+svc).classList.remove('dim');
-  document.getElementById('note-'+svc).textContent = note;
+function activateSourceUI(svc, note, isError) {
+  const row = document.getElementById('row-'+svc);
+  const noteEl = document.getElementById('note-'+svc);
   const hdr = document.getElementById('hdr-'+svc);
-  if (hdr) hdr.classList.remove('p-off');
+  
+  if (isError) {
+    row.classList.add('err');
+    row.classList.remove('on', 'dim');
+    noteEl.textContent = note;
+    if (hdr) hdr.classList.add('p-off');
+  } else {
+    row.classList.add('on');
+    row.classList.remove('dim', 'err');
+    noteEl.textContent = note;
+    if (hdr) hdr.classList.remove('p-off');
+  }
 }
 
 // ── API: Spotify top artists ───────────────────────────────────────

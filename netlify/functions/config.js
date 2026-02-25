@@ -22,6 +22,8 @@ exports.handler = async () => {
       spotifyClientId: process.env.SPOTIFY_CLIENT_ID || '',
       lastfmApiKey: process.env.LASTFM_API_KEY || '',
       deezerAppId: process.env.DEEZER_APP_ID || '',
+      ticketmasterKey: process.env.TICKETMASTER_KEY || '',
+      jambaseKey: process.env.JAMBASE_KEY || '',
     }),
   };
 };
