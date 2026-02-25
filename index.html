@@ -1582,225 +1582,66 @@ function toggleFilter(src) {
   renderList(state.concerts);
 }
 
-// ── API: Spotify top artists ───────────────────────────────────────
-async function fetchSpotifyArtists() {
-  if (!state.spToken) {
-    throw new Error(
-      'Not connected to Spotify. Click the Spotify "Connect" button and log in to authorize.'
-    );
+// ── Generic Logging & Error Handling ──────────────────────────────
+const log = {
+  info: (m) => { console.log(m); searchLog(m, 'info'); },
+  ok:   (m) => { console.log('✓', m); searchLog(m, 'ok'); },
+  warn: (m) => { console.warn('⚠', m); searchLog(m, 'warn'); },
+  err:  (m, svc) => {
+    console.error(`✗ ${svc||'App'}:`, m);
+    searchLog(`✗ ${svc||'App'}: ${m}`, 'err');
+    if (svc) activateSourceUI(svc.toLowerCase().replace('.',''), m, true);
   }
-  if (Date.now() >= state.spTokenExpiry) {
-    state.spToken = null;
-    activateSourceUI('sp', 'Artist matching · token expired');
-    throw new Error(
-      'Your Spotify session expired (tokens last 1 hour). Click the Spotify "Connect" button to log in again.'
-    );
-  }
+};
 
-  let res;
+async function fetchLikedArtists(svc) {
+  const isSp = svc === 'sp', isLf = svc === 'lf', isDz = svc === 'dz';
   try {
-    res = await fetch('https://api.spotify.com/v1/me/top/artists?limit=50&time_range=medium_term', {
-      headers: { 'Authorization': 'Bearer ' + state.spToken }
-    });
-  } catch (e) {
-    throw new Error(
-      'Network error reaching Spotify: ' + e.message + '. ' +
-      'Check your internet connection and that no browser extension is blocking api.spotify.com.'
-    );
-  }
-
-  if (res.status === 401) {
-    state.spToken = null;
-    throw new Error(
-      'Spotify rejected the token with 401 Unauthorized — it may have been revoked. ' +
-      'Click the Spotify "Connect" button and re-authorize.'
-    );
-  }
-  if (res.status === 403) {
-    throw new Error(
-      'Spotify returned 403 Forbidden. ' +
-      'The authorized app is missing the user-top-read scope. ' +
-      'Re-authorize: the scope is requested automatically during the login redirect.'
-    );
-  }
-  if (res.status === 429) {
-    const retryAfter = res.headers.get('Retry-After') || 'a few';
-    throw new Error(`Spotify rate limit reached (429). Wait ${retryAfter} seconds and try again.`);
-  }
-  if (!res.ok) {
-    throw new Error(
-      `Spotify returned an unexpected HTTP ${res.status} ${res.statusText}. ` +
-      'This may indicate a Spotify API outage. Check status.spotify.com.'
-    );
-  }
-
-  let d;
-  try { d = await res.json(); }
-  catch { throw new Error('Spotify returned a non-JSON response. The API may be temporarily unavailable.'); }
-
-  if (d.error) {
-    throw new Error(`Spotify API error ${d.error.status}: ${d.error.message}.`);
-  }
-
-  const artists = (d.items || []).map(a => a.name);
-  if (artists.length === 0) {
-    throw new Error(
-      'Spotify returned 0 top artists. ' +
-      'This happens when the account has little or no listening history on Spotify.'
-    );
-  }
-  return artists;
-}
-
-// ── API: Deezer favorite artists (via Netlify proxy → Deezer internal API) ──
-async function fetchDeezerArtists(arl) {
-  // ── OAuth path: use public API with access_token ──
-  if (state.dzToken) {
-    if (state.dzTokenExpiry && Date.now() >= state.dzTokenExpiry) {
-      state.dzToken = null;
-      activateSourceUI('dz', 'Favorite artists · token expired');
-      throw new Error('Your Deezer session expired. Click the Deezer "Connect" button to log in again.');
+    if (isSp) {
+      if (!state.spToken) throw new Error('Not connected');
+      if (Date.now() >= state.spTokenExpiry) { state.spToken = null; throw new Error('Session expired'); }
+      const res = await fetch('https://api.spotify.com/v1/me/top/artists?limit=50&time_range=medium_term', {
+        headers: { 'Authorization': 'Bearer ' + state.spToken }
+      });
+      if (!res.ok) throw new Error(`Spotify error ${res.status}`);
+      const d = await res.json();
+      return (d.items || []).map(a => a.name);
     }
-    let res;
-    try {
-      res = await fetch('https://api.deezer.com/user/me/artists?limit=500&access_token=' + encodeURIComponent(state.dzToken));
-    } catch (e) {
-      throw new Error('Network error reaching Deezer API: ' + e.message);
+    
+    if (isLf) {
+      if (!state.lfSession) throw new Error('Not connected');
+      const method = 'user.getTopArtists';
+      let url = `https://ws.audioscrobbler.com/2.0/?method=${method}&user=${encodeURIComponent(state.lfUser)}&api_key=${encodeURIComponent(state.lfKey)}&sk=${encodeURIComponent(state.lfSession)}&limit=200&period=overall&format=json`;
+      if (state.lfSecret) {
+        const sig = lfApiSig({ api_key: state.lfKey, limit: '200', method, period: 'overall', sk: state.lfSession, user: state.lfUser }, state.lfSecret);
+        url += `&api_sig=${sig}`;
+      }
+      const res = await fetch(url);
+      const d = await res.json();
+      if (d.error) throw new Error(`Last.fm error ${d.error}: ${d.message}`);
+      return (d.topartists?.artist || []).map(a => a.name);
     }
-    if (!res.ok) {
-      throw new Error('Deezer API returned HTTP ' + res.status + '. Token may be expired.');
+
+    if (isDz) {
+      const arl = state.keys.dz;
+      if (state.dzToken) {
+        const res = await fetch('https://api.deezer.com/user/me/artists?limit=500&access_token=' + encodeURIComponent(state.dzToken));
+        const d = await res.json();
+        if (d.error) throw new Error(d.error.message);
+        return (d.data || []).map(a => a.name);
+      }
+      if (!arl) throw new Error('Not connected');
+      const hdr = { 'X-Deezer-ARL': arl, 'Content-Type': 'text/plain;charset=UTF-8' };
+      const uRes = await fetch('/deezer-proxy?method=deezer.getUserData&input=3&api_version=1.0&api_token=null', { method: 'POST', headers: hdr, body: '{}' });
+      const userData = await uRes.json();
+      const userId = userData.results?.USER?.USER_ID, apiToken = userData.results?.checkForm;
+      if (!userId || !apiToken) throw new Error('Auth failed');
+      const aRes = await fetch(`/deezer-proxy?method=user.getArtists&input=3&api_version=1.0&api_token=${apiToken}`, { method: 'POST', headers: hdr, body: JSON.stringify({ user_id: userId, nb: 500, start: 0 }) });
+      const aData = await aRes.json();
+      return (aData.results?.data || []).map(a => a.ART_NAME);
     }
-    let data;
-    try { data = await res.json(); }
-    catch { throw new Error('Deezer API returned non-JSON.'); }
-    if (data.error) {
-      throw new Error('Deezer API error: ' + (data.error.message || JSON.stringify(data.error)));
-    }
-    const artists = (data.data || []).map(a => a.name).filter(Boolean);
-    if (artists.length === 0) {
-      throw new Error('Deezer returned 0 favorite artists. Add artists to your favorites on deezer.com.');
-    }
-    return artists;
-  }
-
-  // ── ARL cookie path (existing implementation) ──
-  // /deezer-proxy is a Netlify Function that forwards requests to
-  // deezer.com/ajax/gw-light.php with the ARL injected as a Cookie server-side.
-  const GW = '/deezer-proxy';
-  const ARL_HEADER = { 'X-Deezer-ARL': arl };
-
-  // ── Step 1: getUserData to obtain the session api_token (checkForm) ──
-  let initRes;
-  try {
-    initRes = await fetch(
-      `${GW}?method=deezer.getUserData&input=3&api_version=1.0&api_token=null`,
-      { method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8', ...ARL_HEADER },
-        body: '{}' }
-    );
-  } catch (e) {
-    throw new Error('Network error reaching Deezer proxy: ' + e.message);
-  }
-
-  if (!initRes.ok) {
-    throw new Error(
-      `Deezer internal API returned HTTP ${initRes.status} ${initRes.statusText} on getUserData. ` +
-      'The internal endpoint may have moved or Deezer may be down.'
-    );
-  }
-
-  let userData;
-  try { userData = await initRes.json(); }
-  catch {
-    throw new Error(
-      'Deezer returned a non-JSON response to getUserData. ' +
-      'You may not be logged into deezer.com in this browser, or the page returned an HTML error.'
-    );
-  }
-
-  if (userData.error && Object.keys(userData.error).length > 0) {
-    throw new Error(
-      `Deezer API error on getUserData: ${JSON.stringify(userData.error)}. ` +
-      'Your ARL may be expired. Open deezer.com, log out and back in, then copy a fresh ARL from DevTools → Application → Cookies.'
-    );
-  }
-
-  const userId = userData.results?.USER?.USER_ID;
-  if (!userId || userId === 0) {
-    throw new Error(
-      'Deezer returned a guest session (USER_ID = 0). ' +
-      'This means the browser is not authenticated as your account. ' +
-      `The ARL you provided starts with "${arl.slice(0, 10)}..." — ` +
-      'verify it is copied in full from DevTools (it is typically 192 characters long). ' +
-      'Also confirm you are currently logged into deezer.com in this same browser tab.'
-    );
-  }
-
-  const apiToken = userData.results?.checkForm;
-  if (!apiToken) {
-    throw new Error(
-      'Deezer did not return a session api_token (checkForm field missing). ' +
-      'Raw results preview: ' + JSON.stringify(userData.results).slice(0, 300)
-    );
-  }
-
-  console.log(`✓ Deezer session established for user ${userId}`);
-
-  // ── Step 2: Fetch user's favorite artists ──
-  // IMPORTANT: Content-Type must be text/plain;charset=UTF-8 for ALL gw-light.php calls.
-  // Sending application/json causes GATEWAY_ERROR: Undefined or invalid output.
-  let artistsRes;
-  try {
-    artistsRes = await fetch(
-      `${GW}?method=user.getArtists&input=3&api_version=1.0&api_token=${encodeURIComponent(apiToken)}`,
-      { method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8', ...ARL_HEADER },
-        body: JSON.stringify({ user_id: userId, nb: 500, start: 0 }) }
-    );
-  } catch (e) {
-    throw new Error('Network error fetching Deezer artists: ' + e.message);
-  }
-
-  if (!artistsRes.ok) {
-    throw new Error(
-      `Deezer returned HTTP ${artistsRes.status} ${artistsRes.statusText} on user.getArtists.`
-    );
-  }
-
-  let artistsRaw, artistsData;
-  try {
-    artistsRaw = await artistsRes.text();
-    artistsData = JSON.parse(artistsRaw);
-  } catch {
-    throw new Error(
-      'Deezer returned non-JSON on user.getArtists. Raw: ' + (artistsRaw || '').slice(0, 200)
-    );
-  }
-
-  if (artistsData.error && Object.keys(artistsData.error).length > 0) {
-    throw new Error(
-      `Deezer API error on user.getArtists: ${JSON.stringify(artistsData.error)}. ` +
-      'Raw: ' + artistsRaw.slice(0, 300)
-    );
-  }
-
-  // Deezer sometimes returns GATEWAY_ERROR inside results instead of error
-  if (artistsData.results?.GATEWAY_ERROR) {
-    throw new Error(
-      `Deezer gateway error on user.getArtists: "${artistsData.results.GATEWAY_ERROR}". ` +
-      'Raw: ' + artistsRaw.slice(0, 300)
-    );
-  }
-
-  const artists = (artistsData.results?.data || []).map(a => a.ART_NAME).filter(Boolean);
-  if (artists.length === 0) {
-    throw new Error(
-      'Deezer returned 0 favorite artists. ' +
-      'Open deezer.com → your profile → Favorites → Artists and verify you have artists saved. ' +
-      'Raw results: ' + JSON.stringify(artistsData.results).slice(0, 300)
-    );
-  }
-  return artists;
+  } catch (e) { throw new Error(`${svc.toUpperCase()} matching failed: ${e.message}`); }
+  return [];
 }
 
 // ── Deezer OAuth 2.0 ───────────────────────────────────────────────
@@ -2082,15 +1923,12 @@ function toggleArtistSummary(btn) {
 async function searchConcerts() {
   const sc = document.getElementById('startCity').value.trim();
   const ec = document.getElementById('endCity').value.trim();
-  const st = Array.from(document.querySelectorAll('#stopsList .stop-input'))
-    .map(i => i.value.trim()).filter(Boolean).join(',');
-  const ds = document.getElementById('dateStart').value;
-  const de = document.getElementById('dateEnd').value;
+  const st = Array.from(document.querySelectorAll('#stopsList .stop-input')).map(i => i.value.trim()).filter(Boolean).join(',');
+  const ds = document.getElementById('dateStart').value, de = document.getElementById('dateEnd').value;
 
-  if (!sc||!ec) { alert('Please enter a start and end city.'); return; }
-  if (!ds||!de) { alert('Please select Start Driving and End Trip dates.'); return; }
+  if (!sc||!ec||!ds||!de) return alert('Start/End cities and dates are required.');
   const diffDays = Math.ceil((new Date(de+'T00:00:00') - new Date(ds+'T00:00:00')) / 86400000);
-  if (diffDays < 0) { alert('End Trip date must be after Start Driving date.'); return; }
+  if (diffDays < 0) return alert('End date must be after start.');
   state.lastDiffDays = diffDays;
 
   const buf = parseInt(document.getElementById('bufferSlider').value);
@@ -2102,200 +1940,80 @@ async function searchConcerts() {
   const names = [sc, ...st.split(',').map(s=>s.trim()).filter(Boolean), ec];
   const ck = cacheKey(names, rad, state.keys);
 
-  // ── CACHE HIT: same route+radius+keys, cached dates cover the request ──
   if (cache.key === ck && cacheDateCovers(df, dt)) {
-    cache.hits++;
-    clearSearchLog(); searchLog('⚡ Cache hit — showing cached results', 'ok');
-    console.log(`⚡ Cache hit #${cache.hits} — filtering ${cache.allConcerts.length} cached → ${df}…${dt}`);
-
-    const concerts = filterByDate(cache.allConcerts, df, dt);
-    state.concerts = concerts;
-
-    clearConcertMarkers();
-    addConcertMarkers(concerts);
-    updateStatsOverlay(concerts, diffDays);
-    updateCacheUI();
-    renderResults(concerts);
-    return;
+    cache.hits++; log.ok('Cache hit — showing results');
+    state.concerts = filterByDate(cache.allConcerts, df, dt);
+    clearConcertMarkers(); addConcertMarkers(state.concerts);
+    updateStatsOverlay(state.concerts, diffDays); updateCacheUI();
+    renderResults(state.concerts); return;
   }
 
-  // ── CACHE MISS: full API fetch ──
-  const btn = document.getElementById('searchBtn');
-  btn.disabled=true; btn.textContent='⟳ Searching...';
-  clearSearchLog();
+  const btn = document.getElementById('searchBtn'); btn.disabled=true; btn.textContent='⟳ Searching...';
   const _aSum = document.getElementById('artistSummary'); _aSum.innerHTML=''; _aSum.className='';
-  setLB(8); clearMap();
-
-  showEmpty('Geocoding cities...');
-  searchLog('▶ Geocoding: ' + names.join(' → '));
-  console.log('▶ Step 1: Geocoding', names);
+  setLB(8); clearMap(); clearSearchLog(); log.info('▶ Geocoding route...');
 
   const geo = (await Promise.all(names.map(geocode))).filter(Boolean);
-  console.log('✓ Geocoded:', geo.length, 'cities');
-  searchLog('✓ ' + geo.length + ' cities located', 'ok');
+  if (geo.length < 2) { alert('Could not locate cities.'); btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return; }
+  log.ok(`${geo.length} cities located`);
 
-  if (geo.length < 2) {
-    alert('Could not locate your cities. Please check spelling.');
-    btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return;
-  }
-
-  setLB(25); showEmpty('Calculating route...');
-  const route = await getRoute(geo);
+  setLB(25); const route = await getRoute(geo);
   let waypoints = geo;
-
   if (route) {
-    console.log('✓ Route:', Math.round(route.dist/1609), 'miles');
-    state.route = L.geoJSON(route.geo, {
-      style:{color:'#e8c547',weight:3,opacity:.65,dashArray:'6,4'}
-    }).addTo(map);
-    const radM = rad * 1609;
-    const nWp = Math.min(8, Math.max(2, Math.ceil(route.dist / (radM * 1.75))));
-    waypoints = sampleRoute(route.geo, nWp);
+    state.route = L.geoJSON(route.geo, { style:{color:'#e8c547',weight:3,opacity:.65,dashArray:'6,4'} }).addTo(map);
+    waypoints = sampleRoute(route.geo, Math.min(8, Math.max(2, Math.ceil(route.dist / (rad * 1609 * 1.75)))));
     document.getElementById('stDist').textContent = Math.round(route.dist/1609).toLocaleString()+' mi';
     map.fitBounds(state.route.getBounds(), {padding:[50,50]});
-  } else {
-    const lls = geo.map(p=>[p.lat,p.lon]);
-    state.route = L.polyline(lls, {color:'#e8c547',weight:3,opacity:.5,dashArray:'6,4'}).addTo(map);
-    map.fitBounds(L.latLngBounds(lls), {padding:[60,60]});
-    document.getElementById('stDist').textContent = 'N/A';
   }
-
-  // City markers
   geo.forEach((p,i) => {
     const col = i===0?'#4ade80':i===geo.length-1?'#ff5c38':'#e8c547';
-    const r = i===0||i===geo.length-1 ? 9 : 7;
-    const m = L.circleMarker([p.lat,p.lon],{radius:r,fillColor:col,color:'#0a0a0a',weight:2,fillOpacity:1})
-     .addTo(map).bindPopup(`<b style="font-family:monospace">${esc(names[i])}</b>`);
-    state.cityMarkers.push(m);
+    state.cityMarkers.push(L.circleMarker([p.lat,p.lon],{radius:i===0||i===geo.length-1?9:7,fillColor:col,color:'#0a0a0a',weight:2,fillOpacity:1}).addTo(map));
   });
 
-  // ── SESSION CACHE HIT: same route/radius/keys fetched before this session ──
   const scEntry = sessionCache.get(ck);
   if (scEntry && df >= scEntry.dateFrom && dt <= scEntry.dateTo) {
     cache.key = ck; cache.dateFrom = scEntry.dateFrom; cache.dateTo = scEntry.dateTo;
-    cache.allConcerts = scEntry.allConcerts; cache.hits = (cache.hits||0) + 1;
-    searchLog('⚡ Session cache hit — skipping API calls', 'ok');
-    console.log(`⚡ Session cache hit — filtering ${scEntry.allConcerts.length} cached → ${df}…${dt}`);
-    const concerts = filterByDate(scEntry.allConcerts, df, dt);
-    state.concerts = concerts;
-    clearConcertMarkers();
-    addConcertMarkers(concerts);
-    updateStatsOverlay(concerts, diffDays);
-    updateCacheUI();
-    setLB(100); renderResults(concerts);
-    setTimeout(()=>setLB(0), 600);
-    btn.disabled=false; btn.textContent='⟶ Find Shows';
-    return;
+    cache.allConcerts = scEntry.allConcerts; cache.hits++; log.ok('Session cache hit');
+    state.concerts = filterByDate(scEntry.allConcerts, df, dt);
+    clearConcertMarkers(); addConcertMarkers(state.concerts);
+    updateStatsOverlay(state.concerts, diffDays); updateCacheUI();
+    setLB(100); renderResults(state.concerts); setTimeout(()=>setLB(0), 600);
+    btn.disabled=false; btn.textContent='⟶ Find Shows'; return;
   }
 
-  // ── Step 3: Spotify / Last.fm / Deezer → build liked-artist set ──
   let likedArtists = new Set();
-  if (state.spToken || state.lfSession || state.keys.dz || state.dzToken) {
-    showEmpty('Fetching your artists from music services...');
-
-    const [spResult, lfResult, dzResult] = await Promise.all([
-      state.spToken
-        ? fetchSpotifyArtists().then(a => ({ ok: true, artists: a })).catch(e => ({ ok: false, svc: 'Spotify', msg: e.message }))
-        : Promise.resolve({ ok: true, artists: [] }),
-      state.lfSession
-        ? fetchLastFmArtists().then(a => ({ ok: true, artists: a })).catch(e => ({ ok: false, svc: 'Last.fm', msg: e.message }))
-        : Promise.resolve({ ok: true, artists: [] }),
-      (state.dzToken || state.keys.dz)
-        ? fetchDeezerArtists(state.keys.dz).then(a => ({ ok: true, artists: a })).catch(e => ({ ok: false, svc: 'Deezer', msg: e.message }))
-        : Promise.resolve({ ok: true, artists: [] })
-    ]);
-
-    const errors = [];
-    if (!spResult.ok) { console.error('Spotify:', spResult.msg); errors.push({ svc: spResult.svc, msg: spResult.msg }); searchLog('✗ Spotify: ' + spResult.msg, 'err'); }
-    if (!lfResult.ok) { console.error('Last.fm:', lfResult.msg); errors.push({ svc: lfResult.svc, msg: lfResult.msg }); searchLog('✗ Last.fm: ' + lfResult.msg, 'err'); }
-    if (!dzResult.ok) { console.error('Deezer:', dzResult.msg); errors.push({ svc: dzResult.svc, msg: dzResult.msg }); searchLog('✗ Deezer: ' + dzResult.msg, 'err'); }
-
-    const spArtists = spResult.ok ? spResult.artists : [];
-    const lfArtists = lfResult.ok ? lfResult.artists : [];
-    const dzArtists = dzResult.ok ? dzResult.artists : [];
-    [...spArtists, ...lfArtists, ...dzArtists].forEach(a => likedArtists.add(a.toLowerCase().trim()));
-    console.log(`✓ Liked artists: ${likedArtists.size} (${spArtists.length} Spotify + ${lfArtists.length} Last.fm + ${dzArtists.length} Deezer)`);
-    if (spResult.ok && spArtists.length)  searchLog('✓ Spotify: ' + spArtists.length + ' artists', 'ok');
-    else if (spResult.ok && state.spToken) searchLog('⚠ Spotify: 0 artists returned', 'warn');
-    if (lfResult.ok && lfArtists.length)  searchLog('✓ Last.fm: ' + lfArtists.length + ' artists', 'ok');
-    else if (lfResult.ok && state.lfSession) searchLog('⚠ Last.fm: 0 artists returned', 'warn');
-    if (dzResult.ok && dzArtists.length)  searchLog('✓ Deezer: ' + dzArtists.length + ' artists', 'ok');
-    else if (dzResult.ok && (state.dzToken || state.keys.dz))  searchLog('⚠ Deezer: 0 artists returned', 'warn');
-    renderArtistSummary(spArtists, lfArtists, dzArtists, errors);
-
-    if (likedArtists.size === 0) {
-      // All connected music services failed — show each error prominently
-      const html = errors.map(e =>
-        `<div style="text-align:left;background:rgba(255,92,56,.07);border:1px solid rgba(255,92,56,.25);` +
-        `border-radius:4px;padding:10px 12px;margin-bottom:8px;font-size:.56rem;line-height:1.8;color:var(--text2)">` +
-        `<strong style="color:var(--accent2);display:block;margin-bottom:4px">${esc(e.svc)} — connection failed</strong>` +
-        esc(e.msg) + '</div>'
-      ).join('');
-      renderArtistSummary(spArtists, lfArtists, dzArtists, errors);
-      document.getElementById('resultsScroll').innerHTML =
-        `<div style="padding:16px">${html}</div>`;
-      btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return;
-    }
-
-    if (errors.length > 0) {
-      // Partial success — log which service failed but continue with what we have
-      errors.forEach(e => console.warn(`⚠ ${e.svc} failed (continuing with other service):`, e.msg));
-    }
+  const activeMusic = [state.spToken&&'sp', state.lfSession&&'lf', (state.dzToken||state.keys.dz)&&'dz'].filter(Boolean);
+  if (activeMusic.length) {
+    log.info('▶ Syncing music services...');
+    const results = await Promise.all(activeMusic.map(s => fetchLikedArtists(s).then(a => ({ s, a })).catch(e => ({ s, e: e.message }))));
+    const errors = results.filter(r => r.e);
+    results.filter(r => r.a).forEach(r => r.a.forEach(a => likedArtists.add(a.toLowerCase().trim())));
+    
+    if (likedArtists.size) log.ok(`${likedArtists.size} artists synced from ${results.filter(r=>r.a?.length).map(r=>r.s.toUpperCase()).join(', ')}`);
+    errors.forEach(e => log.err(e.e, e.s.toUpperCase()));
+    
+    const artistsBySvc = (s) => results.find(r => r.s === s)?.a || [];
+    renderArtistSummary(artistsBySvc('sp'), artistsBySvc('lf'), artistsBySvc('dz'), errors.map(e => ({ svc: e.s.toUpperCase(), msg: e.e })));
   }
 
   if (!state.keys.tm && !state.keys.jb && !state.keys.eb) {
-    showEmpty('Connect at least one concert source — Ticketmaster, Jambase, or Eventbrite — to find shows.');
-    btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return;
+    log.warn('No concert sources connected'); btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return;
   }
 
-  setLB(45); showEmpty('Fetching concerts...');
-  searchLog('▶ Scanning ' + waypoints.length + ' waypoints · ' + rad + ' mi radius · ' + df + ' → ' + dt);
-  console.log('▶ Step 4: Fetching | Keys:', {tm:!!state.keys.tm,jb:!!state.keys.jb,eb:!!state.keys.eb,lf:!!state.lfSession});
-  console.log('  Waypoints:', waypoints.length, '| Radius:', rad, 'mi | Dates:', df, '→', dt);
-
+  setLB(45); log.info(`▶ Scanning ${waypoints.length} waypoints (${rad}mi radius)...`);
   let concerts = [];
   try {
-    const active = Object.keys(state.keys).filter(s => ['tm','jb','eb'].includes(s));
-    const batches = await Promise.all(
-      waypoints.flatMap(wp => active.map(s => fetchSource(s, wp.lat, wp.lon, rad, df, dt, state.keys[s])))
-    );
+    const activeSrc = ['tm','jb','eb'].filter(s => state.keys[s]);
+    const batches = await Promise.all(waypoints.flatMap(wp => activeSrc.map(s => fetchSource(s, wp.lat, wp.lon, rad, df, dt, state.keys[s]))));
     concerts = dedupe(batches.flat());
-    console.log('✓ API results:', concerts.length, 'shows after dedup');
-    searchLog('✓ ' + concerts.length + ' shows found on route', 'ok');
+    if (likedArtists.size) concerts = concerts.filter(c => artistMatchesSet(c.artist || '', likedArtists));
+    log.ok(`${concerts.length} matches found`);
+  } catch(err) { log.err(err.message); btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return; }
 
-    // Filter to liked artists when Spotify/Deezer is connected
-    if (likedArtists.size > 0) {
-      concerts = concerts.filter(c => artistMatchesSet(c.artist || '', likedArtists));
-      console.log(`✓ After artist filter: ${concerts.length} shows match your taste`);
-      searchLog('✓ ' + concerts.length + ' shows match your artists', 'ok');
-    }
-  } catch(err) {
-    console.error('✗ Concert fetch error:', err);
-    searchLog('✗ Fetch error: ' + err.message, 'err');
-    showEmpty('Something went wrong. See console for details.');
-    btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return;
-  }
-
-  // ── Store in cache ──
-  cache.key = ck;
-  cache.dateFrom = df;
-  cache.dateTo = dt;
-  cache.allConcerts = concerts;
-  cache.hits = 0;
+  cache.key = ck; cache.dateFrom = df; cache.dateTo = dt; cache.allConcerts = concerts;
   sessionCache.set(ck, { dateFrom: df, dateTo: dt, allConcerts: concerts });
-  updateCacheUI();
-  console.log(`💾 Cached ${concerts.length} shows for ${df}→${dt}`);
-
-  state.concerts = concerts;
-  setLB(85);
-
-  addConcertMarkers(concerts);
-  updateStatsOverlay(concerts, diffDays);
-
-  setLB(100);
-  renderResults(concerts);
-  setTimeout(()=>setLB(0), 600);
-  searchLog('✓ Done — ' + concerts.length + ' show' + (concerts.length !== 1 ? 's' : '') + ' displayed', 'ok');
+  updateCacheUI(); state.concerts = concerts;
+  addConcertMarkers(concerts); updateStatsOverlay(concerts, diffDays);
+  setLB(100); renderResults(concerts); setTimeout(()=>setLB(0), 600);
   btn.disabled=false; btn.textContent='⟶ Find Shows';
 }
 
