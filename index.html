@@ -19,7 +19,15 @@
   --spotify:#1DB954; --spotify-hover:#1ed760;
   --lastfm:#B90000; --lastfm-hover:#d40000;
   --deezer:#A238FF; --deezer-hover:#b85cff;
+  --tm:#60a5fa; --jb:var(--green); --eb:#f97316;
 }
+[data-source="tm"] { --src: var(--tm); }
+[data-source="jb"] { --src: var(--jb); }
+[data-source="eb"] { --src: var(--eb); }
+[data-source="sp"] { --src: var(--spotify); }
+[data-source="lf"] { --src: #d51007; }
+[data-source="dz"] { --src: var(--deezer); }
+
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden;}
 
@@ -36,13 +44,9 @@ header{padding:12px 24px;border-bottom:1px solid var(--border);display:flex;alig
 .logo span{color:var(--accent2);}
 .htagline{font-size:.52rem;color:var(--text3);letter-spacing:.16em;text-transform:uppercase;margin-top:1px;}
 .pills{display:flex;gap:5px;}
-.pill{font-size:.48rem;padding:3px 7px;border-radius:2px;letter-spacing:.08em;text-transform:uppercase;border:1px solid;transition:all .25s;white-space:nowrap;}
-.p-tm{color:#60a5fa;border-color:rgba(96,165,250,.35);background:rgba(96,165,250,.07);}
-.p-jb{color:var(--green);border-color:rgba(74,222,128,.35);background:rgba(74,222,128,.07);}
-.p-eb{color:#f97316;border-color:rgba(249,115,22,.35);background:rgba(249,115,22,.07);}
-.p-sp{color:#a78bfa;border-color:rgba(167,139,250,.35);background:rgba(167,139,250,.07);}
-.p-dz{color:#A238FF;border-color:rgba(162,56,255,.35);background:rgba(162,56,255,.07);}
-.p-off{color:var(--text3);border-color:var(--border);background:transparent;opacity:.38;}
+.pill{font-size:.48rem;padding:3px 7px;border-radius:2px;letter-spacing:.08em;text-transform:uppercase;border:1px solid;transition:all .25s;white-space:nowrap;
+  color:var(--src);border-color:rgba(from var(--src) r g b / .35);background:rgba(from var(--src) r g b / .07);}
+.pill.p-off{color:var(--text3);border-color:var(--border);background:transparent;opacity:.38;}
 
 /* ─── 3-Column Layout ─── */
 .app{display:grid;grid-template-columns:320px 340px 1fr;height:calc(100vh - 53px);}
@@ -150,9 +154,7 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
 .fb{font-family:'DM Mono',monospace;font-size:.5rem;padding:2px 7px;border-radius:2px;cursor:pointer;
   letter-spacing:.05em;border:1px solid var(--border);background:transparent;color:var(--text3);transition:all .18s;}
 .fb:hover{opacity:.8;}
-.fb.f-tm{border-color:#60a5fa;color:#60a5fa;background:rgba(96,165,250,.08);}
-.fb.f-jb{border-color:var(--green);color:var(--green);background:rgba(74,222,128,.08);}
-.fb.f-eb{border-color:#f97316;color:#f97316;background:rgba(249,115,22,.08);}
+.fb.on{border-color:var(--src);color:var(--src);background:rgba(from var(--src) r g b / .08);}
 .sort-sel{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
   font-family:'DM Mono',monospace;font-size:.54rem;padding:2px 7px;border-radius:var(--r);outline:none;cursor:pointer;}
 
@@ -176,19 +178,10 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
 .cc{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);
   padding:11px 13px;margin-bottom:6px;cursor:pointer;transition:all .2s;
   position:relative;overflow:hidden;animation:fadeIn .3s ease both;}
-.cc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;opacity:0;transition:opacity .2s;}
-.cc.s-tm::before{background:#60a5fa;} .cc.s-jb::before{background:var(--green);}
-.cc.s-eb::before{background:#f97316;}
-.cc:hover{transform:translateX(3px);border-color:var(--text3);}
+.cc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;opacity:0;transition:opacity .2s;background:var(--src);}
+.cc:hover{transform:translateX(3px);border-color:rgba(from var(--src) r g b / .4);}
 .cc:hover::before{opacity:1;}
-.cc.s-tm:hover{border-color:rgba(96,165,250,.4);}
-.cc.s-jb:hover{border-color:rgba(74,222,128,.4);}
-.cc.s-eb:hover{border-color:rgba(249,115,22,.4);}
-.cc.s-sp:hover{border-color:rgba(29,185,84,.4);}
-.cc.s-dz:hover{border-color:rgba(162,56,255,.4);}
-.cc.s-lf::before{background:#d51007;}.cc.s-lf:hover{border-color:rgba(213,16,7,.4);}
-.t-lf{color:#d51007;border-color:rgba(213,16,7,.22);background:rgba(213,16,7,.07);}
-.p-lf{color:#d51007;border-color:rgba(213,16,7,.35);background:rgba(213,16,7,.07);}
+
 /* API row badges */
 .api-name{font-size:.6rem;color:var(--text);display:flex;align-items:center;gap:5px;}
 .api-badge{font-size:.42rem;padding:2px 5px;border-radius:2px;letter-spacing:.05em;
@@ -201,14 +194,9 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
 .cd{font-size:.5rem;color:var(--accent);letter-spacing:.06em;text-align:right;white-space:nowrap;line-height:1.6;}
 .vn{font-size:.6rem;color:var(--text2);margin-bottom:5px;}
 .ctags{display:flex;gap:4px;flex-wrap:wrap;}
-.tag{font-size:.46rem;padding:2px 5px;border-radius:2px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;}
-.t-city{color:#b8a040;border-color:rgba(232,197,71,.18);background:rgba(232,197,71,.07);}
-.t-tm{color:#60a5fa;border-color:rgba(96,165,250,.22);background:rgba(96,165,250,.07);}
-.t-jb{color:var(--green);border-color:rgba(74,222,128,.22);background:rgba(74,222,128,.07);}
-.t-eb{color:#f97316;border-color:rgba(249,115,22,.22);background:rgba(249,115,22,.07);}
-.t-sp{color:#1db954;border-color:rgba(29,185,84,.22);background:rgba(29,185,84,.07);}
-.t-dz{color:#A238FF;border-color:rgba(162,56,255,.22);background:rgba(162,56,255,.07);}
-.t-gen{color:var(--text3);border-color:var(--border);background:transparent;}
+.tag{font-size:.46rem;padding:2px 5px;border-radius:2px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;
+  color:var(--src, var(--text3));border-color:rgba(from var(--src, var(--border)) r g b / .22);background:rgba(from var(--src, transparent) r g b / .07);}
+.t-city{--src:#b8a040;}
 .ca{display:flex;gap:5px;margin-top:7px;padding-top:7px;border-top:1px solid var(--border);}
 .bs{font-family:'DM Mono',monospace;font-size:.52rem;padding:3px 8px;border-radius:var(--r);
   cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:all .16s;
@@ -360,12 +348,12 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
     <div class="htagline">Concerts along your route</div>
   </div>
   <div class="pills">
-    <span class="pill p-tm p-off" id="hdr-tm">Ticketmaster</span>
-    <span class="pill p-jb p-off" id="hdr-jb">Jambase</span>
-    <span class="pill p-eb p-off" id="hdr-eb">Eventbrite</span>
-    <span class="pill p-lf p-off" id="hdr-lf">Last.fm</span>
-    <span class="pill p-sp p-off" id="hdr-sp">Spotify</span>
-    <span class="pill p-dz p-off" id="hdr-dz">Deezer</span>
+    <span class="pill p-off" data-source="tm" id="hdr-tm">Ticketmaster</span>
+    <span class="pill p-off" data-source="jb" id="hdr-jb">Jambase</span>
+    <span class="pill p-off" data-source="eb" id="hdr-eb">Eventbrite</span>
+    <span class="pill p-off" data-source="lf" id="hdr-lf">Last.fm</span>
+    <span class="pill p-off" data-source="sp" id="hdr-sp">Spotify</span>
+    <span class="pill p-off" data-source="dz" id="hdr-dz">Deezer</span>
   </div>
 </header>
 
@@ -432,19 +420,19 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
           <button class="api-btn" onclick="openModal('eb')">Connect</button>
         </div>
         <div class="api-divider">── music services ──</div>
-        <div class="api-row dim" id="row-lf">
-          <div class="api-ico"><svg viewBox="0 0 24 24" fill="#B90000"><path d="M10.584 17.21l-.88-2.392s-1.43 1.594-3.573 1.594c-1.897 0-3.244-1.649-3.244-4.288 0-3.381 1.704-4.591 3.381-4.591 2.42 0 3.189 1.567 3.849 3.574l.88 2.749c.88 2.666 2.529 4.81 7.284 4.81 3.409 0 5.718-1.044 5.718-3.793 0-2.227-1.265-3.381-3.627-3.933l-1.758-.385c-1.21-.275-1.567-.77-1.567-1.594 0-.935.742-1.484 1.952-1.484 1.32 0 2.034.495 2.144 1.677l2.749-.33c-.22-2.474-1.924-3.492-4.729-3.492-2.474 0-4.893.935-4.893 3.932 0 1.87.907 3.051 3.189 3.601l1.87.44c1.402.33 1.87.88 1.87 1.704 0 1.045-.99 1.484-2.859 1.484-2.776 0-3.932-1.457-4.591-3.464l-.907-2.749c-1.155-3.574-2.997-4.894-6.653-4.894C2.144 5.333 0 7.89 0 12.233c0 4.179 2.144 6.434 5.993 6.434 3.107 0 4.591-1.457 4.591-1.457z"/></svg></div>
+        <div class="api-row dim" id="row-lf" data-source="lf">
+          <div class="api-ico" id="ico-lf"></div>
           <div class="api-info">
             <div class="api-name">Last.fm <span class="api-badge badge-primary">★ Primary</span></div>
             <div class="api-note" id="note-lf">Match top artists · not connected</div>
           </div>
           <div class="api-btn-group">
-            <button class="api-btn-sp-login" style="background:var(--lastfm);border-color:var(--lastfm);color:#fff" onclick="openLfLogin()">Login</button>
+            <button class="api-btn-sp-login" style="background:#d51007;border-color:#d51007;color:#fff" onclick="openLfLogin()">Login</button>
             <button class="api-btn" style="border-color:var(--green)" onclick="openModal('lf','dev')">Dev Login</button>
           </div>
         </div>
-        <div class="api-row dim" id="row-sp">
-          <div class="api-ico"><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></div>
+        <div class="api-row dim" id="row-sp" data-source="sp">
+          <div class="api-ico" id="ico-sp"></div>
           <div class="api-info">
             <div class="api-name">Spotify</div>
             <div class="api-note" id="note-sp">Top artists · not connected</div>
@@ -454,8 +442,8 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
             <button class="api-btn" style="border-color:var(--green)" onclick="openModal('sp','clientid')">Dev Login</button>
           </div>
         </div>
-        <div class="api-row dim" id="row-dz">
-          <div class="api-ico"><svg viewBox="0 0 24 24" fill="#A238FF"><path d="M18.81 4.16v3.03H24V4.16h-5.19zM6.27 8.38v3.027h5.19V8.38H6.27zm12.54 0v3.027H24V8.38h-5.19zM6.27 12.566v3.027h5.19v-3.027H6.27zm6.27 0v3.027h5.19v-3.027h-5.19zm6.27 0v3.027H24v-3.027h-5.19zM0 16.752V19.8h5.19v-3.048H0zm6.27 0V19.8h5.19v-3.048H6.27zm6.27 0V19.8h5.19v-3.048h-5.19zm6.27 0V19.8H24v-3.048h-5.19z"/></svg></div>
+        <div class="api-row dim" id="row-dz" data-source="dz">
+          <div class="api-ico" id="ico-dz"></div>
           <div class="api-info">
             <div class="api-name">Deezer</div>
             <div class="api-note" id="note-dz">Favorite artists · not connected</div>
@@ -477,9 +465,9 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
       <div class="rh">
         <div class="rc" id="rcLabel">No results yet</div>
         <div class="rctrl" id="rctrlBar" style="display:none;">
-          <button class="fb f-tm" id="flt-tm" onclick="toggleFilter('tm')">TM</button>
-          <button class="fb f-jb" id="flt-jb" onclick="toggleFilter('jb')">JB</button>
-          <button class="fb f-eb" id="flt-eb" onclick="toggleFilter('eb')">EB</button>
+          <button class="fb" data-source="tm" id="flt-tm" onclick="toggleFilter('tm')">TM</button>
+          <button class="fb" data-source="jb" id="flt-jb" onclick="toggleFilter('jb')">JB</button>
+          <button class="fb" data-source="eb" id="flt-eb" onclick="toggleFilter('eb')">EB</button>
           <select class="sort-sel" onchange="sortBy(this.value)">
             <option value="date">Date</option>
             <option value="artist">Artist</option>
@@ -678,14 +666,13 @@ const SRC_COLORS = { tm:'#60a5fa', jb:'#4ade80', eb:'#f97316' };
 const SRC_LABELS = { tm:'Ticketmaster', jb:'Jambase', eb:'Eventbrite' };
 
 // ── SVG icon helpers (inline, no external assets) ──────────────────
-function svgSpotifyIcon(size) {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>`;
-}
-function svgLastfmIcon(size) {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"><path d="M10.584 17.21l-.88-2.392s-1.43 1.594-3.573 1.594c-1.897 0-3.244-1.649-3.244-4.288 0-3.381 1.704-4.591 3.381-4.591 2.42 0 3.189 1.567 3.849 3.574l.88 2.749c.88 2.666 2.529 4.81 7.284 4.81 3.409 0 5.718-1.044 5.718-3.793 0-2.227-1.265-3.381-3.627-3.933l-1.758-.385c-1.21-.275-1.567-.77-1.567-1.594 0-.935.742-1.484 1.952-1.484 1.32 0 2.034.495 2.144 1.677l2.749-.33c-.22-2.474-1.924-3.492-4.729-3.492-2.474 0-4.893.935-4.893 3.932 0 1.87.907 3.051 3.189 3.601l1.87.44c1.402.33 1.87.88 1.87 1.704 0 1.045-.99 1.484-2.859 1.484-2.776 0-3.932-1.457-4.591-3.464l-.907-2.749c-1.155-3.574-2.997-4.894-6.653-4.894C2.144 5.333 0 7.89 0 12.233c0 4.179 2.144 6.434 5.993 6.434 3.107 0 4.591-1.457 4.591-1.457z"/></svg>`;
-}
-function svgDeezerIcon(size) {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"><path d="M18.81 4.16v3.03H24V4.16h-5.19zM6.27 8.38v3.027h5.19V8.38H6.27zm12.54 0v3.027H24V8.38h-5.19zM6.27 12.566v3.027h5.19v-3.027H6.27zm6.27 0v3.027h5.19v-3.027h-5.19zm6.27 0v3.027H24v-3.027h-5.19zM0 16.752V19.8h5.19v-3.048H0zm6.27 0V19.8h5.19v-3.048H6.27zm6.27 0V19.8h5.19v-3.048h-5.19zm6.27 0V19.8H24v-3.048h-5.19z"/></svg>`;
+const ICONS = {
+  sp: "M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z",
+  lf: "M10.584 17.21l-.88-2.392s-1.43 1.594-3.573 1.594c-1.897 0-3.244-1.649-3.244-4.288 0-3.381 1.704-4.591 3.381-4.591 2.42 0 3.189 1.567 3.849 3.574l.88 2.749c.88 2.666 2.529 4.81 7.284 4.81 3.409 0 5.718-1.044 5.718-3.793 0-2.227-1.265-3.381-3.627-3.933l-1.758-.385c-1.21-.275-1.567-.77-1.567-1.594 0-.935.742-1.484 1.952-1.484 1.32 0 2.034.495 2.144 1.677l2.749-.33c-.22-2.474-1.924-3.492-4.729-3.492-2.474 0-4.893.935-4.893 3.932 0 1.87.907 3.051 3.189 3.601l1.87.44c1.402.33 1.87.88 1.87 1.704 0 1.045-.99 1.484-2.859 1.484-2.776 0-3.932-1.457-4.591-3.464l-.907-2.749c-1.155-3.574-2.997-4.894-6.653-4.894C2.144 5.333 0 7.89 0 12.233c0 4.179 2.144 6.434 5.993 6.434 3.107 0 4.591-1.457 4.591-1.457z",
+  dz: "M18.81 4.16v3.03H24V4.16h-5.19zM6.27 8.38v3.027h5.19V8.38H6.27zm12.54 0v3.027H24V8.38h-5.19zM6.27 12.566v3.027h5.19v-3.027H6.27zm6.27 0v3.027h5.19v-3.027h-5.19zm6.27 0v3.027H24v-3.027h-5.19zM0 16.752V19.8h5.19v-3.048H0zm6.27 0V19.8h5.19v-3.048H6.27zm6.27 0V19.8h5.19v-3.048h-5.19zm6.27 0V19.8H24v-3.048h-5.19z"
+};
+function getIcon(name, size = 16) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor"><path d="${ICONS[name]}"/></svg>`;
 }
 
 // ── App config (from /api/config — set env vars in Netlify Dashboard) ──────
@@ -1089,7 +1076,7 @@ function openModal(svc, mode) {
       document.getElementById('mDesc').innerHTML = getSpClientIdDesc();
     } else if (useSpOAuth) {
       spOAuthSection.style.display = '';
-      document.getElementById('mSpOAuthBtn').innerHTML = svgSpotifyIcon(16) + ' ' +
+      document.getElementById('mSpOAuthBtn').innerHTML = getIcon('sp') + ' ' +
         (state.spToken ? 'Reconnect Spotify' : 'Login with Spotify');
     }
     oauthSection.style.display  = 'none';
@@ -1156,7 +1143,7 @@ function openModal(svc, mode) {
       oauthSection.style.display  = '';
       manualSection.style.display = 'none';
       saveBtn.style.display       = 'none';
-      oauthBtn.innerHTML = svgLastfmIcon(16) + ' ' +
+      oauthBtn.innerHTML = getIcon('lf') + ' ' +
         (state.lfSession ? 'Reconnect Last.fm' : 'Login with Last.fm');
       oauthBtn.className = 'b-oauth lf-btn';
     }
@@ -1707,6 +1694,18 @@ function activateSourceUI(svc, note, isError) {
     noteEl.textContent = note;
     if (hdr) hdr.classList.remove('p-off');
   }
+}
+
+function toggleFilter(src) {
+  const btn = document.getElementById('flt-'+src);
+  if (state.filters.has(src)) {
+    state.filters.delete(src);
+    btn.classList.remove('on');
+  } else {
+    state.filters.add(src);
+    btn.classList.add('on');
+  }
+  renderList(state.concerts);
 }
 
 // ── API: Spotify top artists ───────────────────────────────────────
@@ -2518,10 +2517,9 @@ function sortBy(m) {
 
 function mkCard(c,i) {
   const {date,time} = fmtDt(c.datetime);
-  const stc = {tm:'t-tm',jb:'t-jb',eb:'t-eb'}[c.source]||'t-gen';
   const slb = SRC_LABELS[c.source]||c.source;
   const hq  = encodeURIComponent(`hotels near ${c.venue} ${c.city}`);
-  return `<div class="cc s-${c.source}" style="animation-delay:${i*18}ms" onclick="zoomTo(${c.lat},${c.lon})">
+  return `<div class="cc" data-source="${c.source}" style="animation-delay:${i*18}ms" onclick="zoomTo(${c.lat},${c.lon})">
     <div class="ct">
       <div class="an">${esc(c.artist)}</div>
       <div class="cd">${date}<br>${time}</div>
@@ -2529,7 +2527,7 @@ function mkCard(c,i) {
     <div class="vn">${esc(c.venue)}</div>
     <div class="ctags">
       <span class="tag t-city">${esc(c.city)}</span>
-      <span class="tag ${stc}">${slb}</span>
+      <span class="tag" data-source="${c.source}">${slb}</span>
       ${c.genre?`<span class="tag t-gen">${esc(c.genre)}</span>`:''}
     </div>
     <div class="ca">
@@ -2547,6 +2545,13 @@ function zoomTo(lat, lon) {
   map.setView([lat,lon], 13, {animate:true});
 }
 
+function initIcons() {
+  ['lf','sp','dz'].forEach(s => {
+    const el = document.getElementById('ico-'+s);
+    if (el) el.innerHTML = getIcon(s);
+  });
+}
+
 // ── Handle OAuth returns on page load ─────────────────────────────
 if (_IS_POPUP_CB) {
   // This page is a popup handling a callback — run handlers immediately,
@@ -2560,6 +2565,7 @@ if (_IS_POPUP_CB) {
   setupPopupListener();
   loadConfig().then(() => {
     loadSession();
+    initIcons();
     handleSpotifyCallback(); // handles any redirect-fallback code in URL
     handleLastFmCallback();  // handles any redirect-fallback token in URL
     handleDeezerCallback();  // handles any redirect-fallback code in URL
