@@ -435,7 +435,10 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
             <div class="api-name">Last.fm <span class="api-badge badge-primary">★ Primary</span></div>
             <div class="api-note" id="note-lf">Match top artists · not connected</div>
           </div>
-          <button class="api-btn" onclick="openModal('lf')">Connect</button>
+          <div class="api-btn-group">
+            <button class="api-btn-sp-login" style="background:var(--lastfm);border-color:var(--lastfm);color:#fff" onclick="openLfLogin()">Login</button>
+            <button class="api-btn" style="border-color:var(--green)" onclick="openModal('lf','dev')">Dev Login</button>
+          </div>
         </div>
         <div class="api-row dim" id="row-sp">
           <div class="api-ico"><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></div>
@@ -942,6 +945,51 @@ function hav(la1,lo1,la2,lo2) {
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
+// ── Last.fm tile LOGIN button ───────────────────────────────────
+function openLfLogin() {
+  if (appConfig?.lastfmApiKey) {
+    authorizeLastFm(appConfig.lastfmApiKey);
+  } else {
+    const note = document.getElementById('note-lf');
+    if (note) {
+      note.textContent = 'Error: Last.fm API Key not configured on server.';
+      note.style.color = 'var(--accent2)';
+    }
+    console.error('Last.fm login failed: appConfig.lastfmApiKey is missing.');
+  }
+}
+
+// ── Last.fm helper for 1-click setup ─────────────────────────────
+function getLfClientIdDesc() {
+  const uri = window.location.origin + '/callbacks';
+  return '<strong style="color:var(--text)">Step 1:</strong> Create a free API account at ' +
+    '<a href="https://www.last.fm/api/account/create" target="_blank" style="color:var(--accent);text-decoration:none">last.fm/api/account/create</a>.' +
+    '<br><br>' +
+    '<strong style="color:var(--text)">Step 2:</strong> Use this as your <strong>Callback URL</strong>:' +
+    '<div id="lfRedirectUriBox" style="margin:6px 0;padding:6px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--accent);font-size:.55rem;word-break:break-all;font-family:\'DM Mono\',monospace;user-select:all;cursor:pointer" onclick="copyLfRedirectUri()" title="Click to copy">' + uri + '</div>' +
+    '<button class="b-oauth lf-btn" style="margin-bottom:12px;font-size:.58rem;padding:6px;height:auto;letter-spacing:0" onclick="copyAndOpenLfDashboard()">1-Click: Copy URL & Open Dashboard</button>' +
+    '<strong style="color:var(--text)">Step 3:</strong> Paste your <strong style="color:var(--accent)">API Key</strong> and <strong style="color:var(--accent)">Shared Secret</strong> below.';
+}
+
+async function copyLfRedirectUri() {
+  const uri = window.location.origin + '/callbacks';
+  try {
+    await navigator.clipboard.writeText(uri);
+    const box = document.getElementById('lfRedirectUriBox');
+    if (box) {
+      const old = box.textContent;
+      box.textContent = 'COPIED TO CLIPBOARD ✓';
+      box.style.color = 'var(--green)';
+      setTimeout(() => { box.textContent = old; box.style.color = ''; }, 2000);
+    }
+  } catch (err) { console.error('Failed to copy: ', err); }
+}
+
+function copyAndOpenLfDashboard() {
+  copyLfRedirectUri();
+  window.open('https://www.last.fm/api/account/create', '_blank');
+}
+
 // ── Spotify tile LOGIN button ────────────────────────────────────
 function openSpLogin() {
   if (appConfig?.spotifyClientId) {
@@ -1076,13 +1124,47 @@ function openModal(svc, mode) {
     }
   }
   // ── Last.fm with pre-configured OAuth ──
-  else if (useLfOAuth) {
-    oauthSection.style.display  = '';
-    manualSection.style.display = 'none';
-    saveBtn.style.display       = 'none';
-    oauthBtn.innerHTML = svgLastfmIcon(16) + ' ' +
-      (state.lfSession ? 'Reconnect Last.fm' : 'Login with Last.fm');
-    oauthBtn.className = 'b-oauth lf-btn';
+  else if (svc === 'lf') {
+    if (mode === 'dev' || !appConfig?.lastfmApiKey) {
+      // DEV mode or no server config: show manual entry with dynamic instructions
+      oauthSection.style.display  = 'none';
+      manualSection.style.display = '';
+      saveBtn.style.display       = '';
+      document.getElementById('mTitle').textContent = 'Last.fm API Key';
+      document.getElementById('mDesc').innerHTML = getLfClientIdDesc();
+      document.getElementById('mInput').placeholder = c.placeholder || '';
+      document.getElementById('mInput').value = state.lfKey || '';
+      const wrap2 = document.getElementById('mInput2Wrap');
+      wrap2.style.display = '';
+      document.getElementById('mInput2Label').textContent = c.label2 || 'Shared Secret';
+      document.getElementById('mInput2').placeholder = c.placeholder2 || '';
+      document.getElementById('mInput2').value = state.lfSecret || '';
+      saveBtn.textContent = 'Login with Last.fm';
+    } else if (useLfOAuth) {
+      oauthSection.style.display  = '';
+      manualSection.style.display = 'none';
+      saveBtn.style.display       = 'none';
+      oauthBtn.innerHTML = svgLastfmIcon(16) + ' ' +
+        (state.lfSession ? 'Reconnect Last.fm' : 'Login with Last.fm');
+      oauthBtn.className = 'b-oauth lf-btn';
+    }
+    setTimeout(() => {
+      const inputEl = document.getElementById('mInput');
+      inputEl.focus();
+      // Add auto-extraction from pasted URL
+      inputEl.oninput = (e) => {
+        if (state.modal === 'lf') {
+          const val = e.target.value.trim();
+          // Extract API key from a pasted Last.fm API page URL (not standard, but helpful if they paste the page)
+          const match = val.match(/api_key=([a-f0-9]{32})/i);
+          if (match && match[1]) {
+            e.target.value = match[1];
+            showModalError('✓ API Key extracted from URL');
+            setTimeout(clearModalError, 3000);
+          }
+        }
+      };
+    }, 80);
   }
   // ── Manual key entry (fallback) ──
   else {
@@ -1091,15 +1173,10 @@ function openModal(svc, mode) {
     saveBtn.style.display       = '';
 
     document.getElementById('mInput').placeholder = c.placeholder || '';
-    document.getElementById('mInput').value = svc === 'lf' ? (state.lfKey || '') : (state.keys[svc] || '');
+    document.getElementById('mInput').value = state.keys[svc] || '';
     const wrap2 = document.getElementById('mInput2Wrap');
-    wrap2.style.display = svc === 'lf' ? '' : 'none';
-    document.getElementById('mInput2Label').textContent = c.label2 || 'API Key';
-    document.getElementById('mInput2').placeholder = c.placeholder2 || '';
-    document.getElementById('mInput2').value = svc === 'lf' ? (state.lfSecret || '') : '';
-    saveBtn.textContent =
-      svc === 'lf' ? 'Login with Last.fm' :
-      'Save';
+    wrap2.style.display = 'none';
+    saveBtn.textContent = 'Save';
     setTimeout(() => document.getElementById('mInput').focus(), 80);
   }
 
@@ -1115,8 +1192,8 @@ function startModalOAuth() {
     authorizeSpotify(appConfig.spotifyClientId);
     showModalLoading('Redirecting to Spotify...');
   } else if (s === 'lf') {
-    openLastFmPopup(appConfig.lastfmApiKey);
-    showModalLoading('Waiting for Last.fm...');
+    authorizeLastFm(appConfig.lastfmApiKey);
+    showModalLoading('Redirecting to Last.fm...');
   } else if (s === 'dz') {
     openDeezerPopup(appConfig.deezerAppId);
     showModalLoading('Waiting for Deezer...');
@@ -1132,14 +1209,14 @@ function saveKey() {
     if (clientId) authorizeSpotify(clientId);
     return;
   }
-  // Last.fm — opens Last.fm login popup (manual API Key + Shared Secret fallback)
+  // Last.fm — redirects to Last.fm login (manual API Key + Shared Secret fallback)
   if (s === 'lf') {
     const key    = document.getElementById('mInput').value.trim();
     const secret = document.getElementById('mInput2').value.trim();
     if (key) {
       if (secret) sessionStorage.setItem('lf_api_secret', secret);
       closeModal();
-      openLastFmPopup(key);
+      authorizeLastFm(key);
     } else {
       closeModal();
     }
@@ -1389,42 +1466,18 @@ function lfApiSig(params, secret) {
   );
 }
 
-// ── Open Last.fm login popup ───────────────────────────────────────
-function openLastFmPopup(apiKey) {
-  sessionStorage.setItem('lf_popup_api_key', apiKey);
+// ── Open Last.fm login (Direct Redirect) ──────────────────────────
+function authorizeLastFm(apiKey) {
   sessionStorage.setItem('lf_api_key', apiKey);
-
-  // Last.fm's auth endpoint does not natively support a state parameter,
-  // so we encode the CSRF state into the callback URL as a query parameter.
   const oauthState = generateOAuthState('lf');
   const cbUrl = lfRedirectUri() + '?lf_state=' + encodeURIComponent(oauthState);
-
-  const url = `https://www.last.fm/api/auth/?api_key=${encodeURIComponent(apiKey)}&cb=${encodeURIComponent(cbUrl)}`;
-  const popup = window.open(url, 'LastFmLogin', 'width=460,height=640,scrollbars=yes,resizable=yes');
-  if (!popup) {
-    window.location.href = url;
-  } else {
-    const pollTimer = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(pollTimer);
-        const loadingSec = document.getElementById('mLoadingSection');
-        if (loadingSec && loadingSec.style.display !== 'none') {
-          loadingSec.style.display = 'none';
-          document.getElementById('mOAuthSection').style.display = '';
-          document.getElementById('mActions').style.display = 'flex';
-        }
-      }
-    }, 500);
-  }
+  window.location.href = `https://www.last.fm/api/auth/?api_key=${encodeURIComponent(apiKey)}&cb=${encodeURIComponent(cbUrl)}`;
 }
 
-// ── Complete Last.fm auth after receiving token (popup or redirect) ─
+// ── Complete Last.fm auth after receiving token (Redirect) ────────
 async function completeLastFmAuth(token) {
-  const apiKey = sessionStorage.getItem('lf_popup_api_key') ||
-                 sessionStorage.getItem('lf_api_key') ||
-                 appConfig?.lastfmApiKey || '';
+  const apiKey = sessionStorage.getItem('lf_api_key') || appConfig?.lastfmApiKey || '';
   const secret = sessionStorage.getItem('lf_api_secret');
-  sessionStorage.removeItem('lf_popup_api_key');
   sessionStorage.removeItem('lf_api_key');
   sessionStorage.removeItem('lf_api_secret');
 
@@ -1496,29 +1549,33 @@ async function completeLastFmAuth(token) {
   console.log(`✓ Last.fm authorized for ${state.lfUser}`);
 }
 
+// ── Handle Last.fm callback (Redirect fallback) ────────────────────
+async function handleLastFmCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  const lfState = params.get('lf_state');
+  if (!token) return;
+  window.history.replaceState({}, '', window.location.pathname);
+
+  // Non-popup: validate CSRF state
+  if (lfState && !validateOAuthState('lf', lfState)) {
+    console.error('Last.fm CSRF state validation failed.');
+    showEmpty('Last.fm authorization failed: security state mismatch. Please try again.');
+    return;
+  }
+
+  await completeLastFmAuth(token);
+}
+
 // ── Message listener for OAuth popup results ──────────────────────
 // Set up once on the main (non-popup) window. The popup calls postMessage
-// with { type: 'lastfm_token'|'deezer_code', ... } before it closes.
+// with { type: 'deezer_code', ... } before it closes.
 function setupPopupListener() {
   window.addEventListener('message', async function(e) {
     if (e.origin !== window.location.origin) return;
     const d = e.data;
 
-    if (d.type === 'lastfm_token') {
-      // Validate CSRF state for Last.fm
-      if (d.state && !validateOAuthState('lf', d.state)) {
-        console.error('Last.fm popup: CSRF state mismatch.');
-        showModalError('Last.fm authorization failed: security state mismatch.');
-        return;
-      }
-      if (document.getElementById('modalEl').classList.contains('open')) {
-        showModalLoading('Exchanging Last.fm session...');
-      }
-      await completeLastFmAuth(d.token);
-      if (state.lfSession && document.getElementById('modalEl').classList.contains('open')) {
-        showModalSuccess(state.lfUser + ' connected!');
-      }
-    } else if (d.type === 'deezer_code') {
+    if (d.type === 'deezer_code') {
       // Validate CSRF state for Deezer
       if (d.state && !validateOAuthState('dz', d.state)) {
         console.error('Deezer popup: CSRF state mismatch.');
@@ -1537,39 +1594,6 @@ function setupPopupListener() {
       showModalError('Deezer authorization denied: ' + (d.error || 'unknown error'));
     }
   });
-}
-
-// ── Handle Last.fm callback (popup OR redirect fallback) ───────────
-async function handleLastFmCallback() {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
-  const lfState = params.get('lf_state');
-  if (!token) return;
-  window.history.replaceState({}, '', window.location.pathname);
-
-  if (_IS_POPUP_CB && window.opener) {
-    window.opener.postMessage(
-      { type: 'lastfm_token', token, state: lfState },
-      window.location.origin
-    );
-    document.body.style.cssText =
-      'margin:0;height:100vh;background:#0a0a0a;display:flex;align-items:center;justify-content:center';
-    document.body.innerHTML =
-      '<div style="text-align:center;font-family:\'DM Mono\',monospace;color:#4ade80">' +
-      '<div style="font-size:1.8rem;margin-bottom:10px">&#10003;</div>' +
-      '<div style="font-size:.6rem;letter-spacing:.14em;opacity:.55">AUTHORIZED &middot; CLOSING</div></div>';
-    setTimeout(() => window.close(), 700);
-    return;
-  }
-
-  // Non-popup: validate CSRF state
-  if (lfState && !validateOAuthState('lf', lfState)) {
-    console.error('Last.fm CSRF state validation failed.');
-    showEmpty('Last.fm authorization failed: security state mismatch. Please try again.');
-    return;
-  }
-
-  await completeLastFmAuth(token);
 }
 
 function activateSourceUI(svc, note) {
