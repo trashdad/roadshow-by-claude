@@ -953,13 +953,36 @@ function openSpLogin() {
   }
 }
 
-const SP_CLIENTID_DESC =
-  '<strong style="color:var(--text)">Step 1:</strong> Create a free app at ' +
-  '<a href="https://developer.spotify.com/dashboard" target="_blank" style="color:var(--accent);text-decoration:none">developer.spotify.com/dashboard</a>.' +
-  '<br><br>' +
-  '<strong style="color:var(--text)">Step 2:</strong> In your app\'s settings, add this <strong>Redirect URI</strong>:' +
-  '<div style="margin:6px 0;padding:6px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--accent);font-size:.55rem;word-break:break-all;font-family:\'DM Mono\',monospace;user-select:all">https://oldroadnewmusic.netlify.app/callbacks</div>' +
-  '<strong style="color:var(--text)">Step 3:</strong> Copy your <strong style="color:var(--accent)">Client ID</strong> from the app dashboard and paste it below.';
+// ── Spotify helper for 1-click setup ──────────────────────────────
+function getSpClientIdDesc() {
+  const uri = window.location.origin + '/callbacks';
+  return '<strong style="color:var(--text)">Step 1:</strong> Create a free app at ' +
+    '<a href="https://developer.spotify.com/dashboard" target="_blank" style="color:var(--accent);text-decoration:none">developer.spotify.com/dashboard</a>.' +
+    '<br><br>' +
+    '<strong style="color:var(--text)">Step 2:</strong> In your app\'s settings, add this <strong>Redirect URI</strong>:' +
+    '<div id="spRedirectUriBox" style="margin:6px 0;padding:6px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--accent);font-size:.55rem;word-break:break-all;font-family:\'DM Mono\',monospace;user-select:all;cursor:pointer" onclick="copySpRedirectUri()" title="Click to copy">' + uri + '</div>' +
+    '<button class="b-oauth sp-btn" style="margin-bottom:12px;font-size:.58rem;padding:6px;height:auto;letter-spacing:0" onclick="copyAndOpenSpDashboard()">1-Click: Copy URI & Open Dashboard</button>' +
+    '<strong style="color:var(--text)">Step 3:</strong> Copy your <strong style="color:var(--accent)">Client ID</strong> from the app dashboard and paste it below.';
+}
+
+async function copySpRedirectUri() {
+  const uri = window.location.origin + '/callbacks';
+  try {
+    await navigator.clipboard.writeText(uri);
+    const box = document.getElementById('spRedirectUriBox');
+    if (box) {
+      const old = box.textContent;
+      box.textContent = 'COPIED TO CLIPBOARD ✓';
+      box.style.color = 'var(--green)';
+      setTimeout(() => { box.textContent = old; box.style.color = ''; }, 2000);
+    }
+  } catch (err) { console.error('Failed to copy: ', err); }
+}
+
+function copyAndOpenSpDashboard() {
+  copySpRedirectUri();
+  window.open('https://developer.spotify.com/dashboard/create', '_blank');
+}
 
 // ── Modal ──────────────────────────────────────────────────────────
 function openModal(svc, mode) {
@@ -996,11 +1019,11 @@ function openModal(svc, mode) {
 
   // ── Spotify: always show server OAuth button (if configured) + manual client ID entry ──
   if (svc === 'sp') {
-    if (mode === 'clientid') {
-      // CLIENT ID mode: skip server OAuth, show only manual entry with detailed instructions
+    if (mode === 'clientid' || !appConfig?.spotifyClientId) {
+      // CLIENT ID mode or no server config: show manual entry with detailed instructions
       spOAuthSection.style.display = 'none';
       document.getElementById('mTitle').textContent = 'Spotify Client ID';
-      document.getElementById('mDesc').innerHTML = SP_CLIENTID_DESC;
+      document.getElementById('mDesc').innerHTML = getSpClientIdDesc();
     } else if (useSpOAuth) {
       spOAuthSection.style.display = '';
       document.getElementById('mSpOAuthBtn').innerHTML = svgSpotifyIcon(16) + ' ' +
@@ -1013,7 +1036,22 @@ function openModal(svc, mode) {
     document.getElementById('mInput').value = state.keys.sp || '';
     document.getElementById('mInput2Wrap').style.display = 'none';
     saveBtn.textContent = 'Login with Spotify';
-    setTimeout(() => document.getElementById('mInput').focus(), 80);
+    setTimeout(() => {
+      const inputEl = document.getElementById('mInput');
+      inputEl.focus();
+      // Add auto-extraction from pasted URL
+      inputEl.oninput = (e) => {
+        if (state.modal === 'sp') {
+          const val = e.target.value.trim();
+          const match = val.match(/\/applications\/([a-z0-9]{32})/i);
+          if (match && match[1]) {
+            e.target.value = match[1];
+            showModalError('✓ Client ID extracted from URL');
+            setTimeout(clearModalError, 3000);
+          }
+        }
+      };
+    }, 80);
   }
   // ── Deezer: special handling with tabs ──
   else if (svc === 'dz') {
