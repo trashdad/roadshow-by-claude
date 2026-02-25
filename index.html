@@ -1037,143 +1037,62 @@ function openModal(svc, mode) {
   const c = MCFG[svc];
   clearModalError();
 
-  const useSpOAuth = svc === 'sp' && appConfig?.spotifyClientId;
-  const useLfOAuth = svc === 'lf' && appConfig?.lastfmApiKey;
-  const useDzOAuth = svc === 'dz' && appConfig?.deezerAppId;
-  const useOAuth = useSpOAuth || useLfOAuth;
+  const isSp = svc === 'sp', isLf = svc === 'lf', isDz = svc === 'dz';
+  const hasSp = isSp && appConfig?.spotifyClientId, hasLf = isLf && appConfig?.lastfmApiKey, hasDz = isDz && appConfig?.deezerAppId;
 
   document.getElementById('mTitle').textContent = c.title;
-  document.getElementById('mDesc').innerHTML = c.desc;
+  document.getElementById('mDesc').innerHTML = (isSp && mode==='clientid') ? getSpClientIdDesc() : (isLf && (mode==='dev'||!appConfig?.lastfmApiKey)) ? getLfClientIdDesc() : c.desc;
 
-  const spOAuthSection = document.getElementById('mSpOAuthSection');
-  const oauthSection  = document.getElementById('mOAuthSection');
-  const manualSection = document.getElementById('mManualSection');
-  const saveBtn       = document.getElementById('mSaveBtn');
-  const oauthBtn      = document.getElementById('mOAuthBtn');
-  const actions       = document.getElementById('mActions');
-  const loadingSec    = document.getElementById('mLoadingSection');
-  const successSec    = document.getElementById('mSuccessSection');
-  const dzTabs        = document.getElementById('mDeezerTabs');
-  const dzOAuthSec    = document.getElementById('mDzOAuthSection');
-
-  // Reset all sections
-  loadingSec.style.display   = 'none';
-  successSec.style.display   = 'none';
-  spOAuthSection.style.display = 'none';
-  dzTabs.style.display       = 'none';
-  dzOAuthSec.style.display   = 'none';
-  actions.style.display      = 'flex';
-
-  // ── Spotify: always show server OAuth button (if configured) + manual client ID entry ──
-  if (svc === 'sp') {
-    if (mode === 'clientid') {
-      // CLIENT ID mode: skip server OAuth, show manual entry with detailed dynamic instructions
-      spOAuthSection.style.display = 'none';
-      document.getElementById('mTitle').textContent = 'Spotify Client ID';
-      document.getElementById('mDesc').innerHTML = getSpClientIdDesc();
-    } else if (useSpOAuth) {
-      spOAuthSection.style.display = '';
-      document.getElementById('mSpOAuthBtn').innerHTML = getIcon('sp') + ' ' +
-        (state.spToken ? 'Reconnect Spotify' : 'Login with Spotify');
-    }
-    oauthSection.style.display  = 'none';
-    manualSection.style.display = '';
-    saveBtn.style.display       = '';
-    document.getElementById('mInput').placeholder = c.placeholder || '';
-    document.getElementById('mInput').value = state.keys.sp || '';
-    document.getElementById('mInput2Wrap').style.display = 'none';
-    saveBtn.textContent = 'Login with Spotify';
-    setTimeout(() => {
-      const inputEl = document.getElementById('mInput');
-      inputEl.focus();
-      // Add auto-extraction from pasted URL
-      inputEl.oninput = (e) => {
-        if (state.modal === 'sp') {
-          const val = e.target.value.trim();
-          const match = val.match(/\/applications\/([a-z0-9]{32})/i);
-          if (match && match[1]) {
-            e.target.value = match[1];
-            showModalError('✓ Client ID extracted from URL');
-            setTimeout(clearModalError, 3000);
-          }
-        }
-      };
-    }, 80);
+  const toggle = (id, show) => document.getElementById(id).style.display = show ? '' : 'none';
+  
+  toggle('mLoadingSection', false); toggle('mSuccessSection', false);
+  toggle('mActions', true);
+  toggle('mSpOAuthSection', isSp && mode!=='clientid' && hasSp);
+  toggle('mOAuthSection', isLf && mode!=='dev' && hasLf);
+  toggle('mDzOAuthSection', false); toggle('mDeezerTabs', false);
+  
+  if (isSp && hasSp && mode!=='clientid') {
+    document.getElementById('mSpOAuthBtn').innerHTML = getIcon('sp') + ' ' + (state.spToken ? 'Reconnect Spotify' : 'Login with Spotify');
   }
-  // ── Deezer: special handling with tabs ──
-  else if (svc === 'dz') {
-    oauthSection.style.display = 'none';
-
-    if (useDzOAuth) {
-      // Show tabs: OAuth (primary) + ARL (fallback)
-      dzTabs.style.display = '';
-      document.getElementById('mDesc').innerHTML = 'Log in with your Deezer account to import your favorite artists. Alternatively, use the ARL cookie method.';
-      switchDzTab('oauth'); // default to OAuth tab
-    } else {
-      // No server config: ARL only
-      manualSection.style.display = '';
-      saveBtn.style.display = '';
-      saveBtn.textContent = 'Save';
-      document.getElementById('mInput').placeholder = c.placeholder;
-      document.getElementById('mInput').value = state.keys.dz || '';
-      document.getElementById('mInput2Wrap').style.display = 'none';
-    }
+  if (isLf && hasLf && mode!=='dev') {
+    document.getElementById('mOAuthBtn').innerHTML = getIcon('lf') + ' ' + (state.lfSession ? 'Reconnect Last.fm' : 'Login with Last.fm');
+    document.getElementById('mOAuthBtn').className = 'b-oauth lf-btn';
   }
-  // ── Last.fm with pre-configured OAuth ──
-  else if (svc === 'lf') {
-    if (mode === 'dev' || !appConfig?.lastfmApiKey) {
-      // DEV mode or no server config: show manual entry with dynamic instructions
-      oauthSection.style.display  = 'none';
-      manualSection.style.display = '';
-      saveBtn.style.display       = '';
-      document.getElementById('mTitle').textContent = 'Last.fm API Key';
-      document.getElementById('mDesc').innerHTML = getLfClientIdDesc();
-      document.getElementById('mInput').placeholder = c.placeholder || '';
-      document.getElementById('mInput').value = state.lfKey || '';
-      const wrap2 = document.getElementById('mInput2Wrap');
-      wrap2.style.display = '';
+
+  const isManual = (!isSp && !isLf && !isDz) || (isSp && mode==='clientid') || (isLf && (mode==='dev'||!appConfig?.lastfmApiKey));
+  toggle('mManualSection', isManual);
+  toggle('mSaveBtn', isManual);
+
+  if (isDz) {
+    if (hasDz) { toggle('mDeezerTabs', true); switchDzTab('oauth'); }
+    else { toggle('mManualSection', true); toggle('mSaveBtn', true); }
+  }
+
+  if (isManual) {
+    const input = document.getElementById('mInput');
+    input.placeholder = c.placeholder || '';
+    input.value = (isSp ? state.keys.sp : isLf ? state.lfKey : state.keys[svc]) || '';
+    const isLfDev = isLf && (mode==='dev' || !appConfig?.lastfmApiKey);
+    toggle('mInput2Wrap', isLfDev);
+    if (isLfDev) {
       document.getElementById('mInput2Label').textContent = c.label2 || 'Shared Secret';
       document.getElementById('mInput2').placeholder = c.placeholder2 || '';
       document.getElementById('mInput2').value = state.lfSecret || '';
-      saveBtn.textContent = 'Login with Last.fm';
-    } else if (useLfOAuth) {
-      oauthSection.style.display  = '';
-      manualSection.style.display = 'none';
-      saveBtn.style.display       = 'none';
-      oauthBtn.innerHTML = getIcon('lf') + ' ' +
-        (state.lfSession ? 'Reconnect Last.fm' : 'Login with Last.fm');
-      oauthBtn.className = 'b-oauth lf-btn';
     }
+    document.getElementById('mSaveBtn').textContent = (isSp || isLf) ? `Login with ${isSp?'Spotify':'Last.fm'}` : 'Save';
+    
     setTimeout(() => {
-      const inputEl = document.getElementById('mInput');
-      inputEl.focus();
-      // Add auto-extraction from pasted URL
-      inputEl.oninput = (e) => {
-        if (state.modal === 'lf') {
-          const val = e.target.value.trim();
-          // Extract API key from a pasted Last.fm API page URL (not standard, but helpful if they paste the page)
-          const match = val.match(/api_key=([a-f0-9]{32})/i);
-          if (match && match[1]) {
-            e.target.value = match[1];
-            showModalError('✓ API Key extracted from URL');
-            setTimeout(clearModalError, 3000);
-          }
+      input.focus();
+      input.oninput = (e) => {
+        const val = e.target.value.trim();
+        const match = isSp ? val.match(/\/applications\/([a-z0-9]{32})/i) : isLf ? val.match(/api_key=([a-f0-9]{32})/i) : null;
+        if (match?.[1]) {
+          e.target.value = match[1];
+          showModalError(`✓ ${isSp?'Client ID':'API Key'} extracted from URL`);
+          setTimeout(clearModalError, 3000);
         }
       };
     }, 80);
-  }
-  // ── Manual key entry (fallback) ──
-  else {
-    oauthSection.style.display  = 'none';
-    manualSection.style.display = '';
-    saveBtn.style.display       = '';
-
-    document.getElementById('mInput').placeholder = c.placeholder || '';
-    document.getElementById('mInput').value = state.keys[svc] || '';
-    const wrap2 = document.getElementById('mInput2Wrap');
-    wrap2.style.display = 'none';
-    saveBtn.textContent = 'Save';
-    setTimeout(() => document.getElementById('mInput').focus(), 80);
   }
 
   document.getElementById('modalEl').classList.add('open');
@@ -1272,85 +1191,52 @@ function sampleRoute(geo, n) {
   });
 }
 
-// ── API: Ticketmaster ──────────────────────────────────────────────
-async function fetchTM(lat, lon, radius, df, dt, key) {
-  const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${key}` +
-    `&latlong=${lat},${lon}&radius=${radius}&unit=miles` +
-    `&startDateTime=${df}T00:00:00Z&endDateTime=${dt}T23:59:59Z` +
-    `&classificationName=music&size=50&sort=date,asc`;
-  try {
-    const r = await fetch(url);
-    const d = await r.json();
-    if (d.fault || d.error) {
-      activateSourceUI('tm', 'Connection error: check API key', true);
-      return [];
-    }
-    return (d?._embedded?.events || []).map(e => ({
-      id:'tm-'+e.id, source:'tm',
-      artist: e.name,
-      venue:  e._embedded?.venues?.[0]?.name || 'TBA',
-      city:   [e._embedded?.venues?.[0]?.city?.name, e._embedded?.venues?.[0]?.state?.stateCode].filter(Boolean).join(', '),
-      lat:    parseFloat(e._embedded?.venues?.[0]?.location?.latitude),
-      lon:    parseFloat(e._embedded?.venues?.[0]?.location?.longitude),
+// ── Generic API Fetching ──────────────────────────────────────────
+const API_MAP = {
+  tm: {
+    url: (lat, lon, rad, df, dt, k) => `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${k}&latlong=${lat},${lon}&radius=${rad}&unit=miles&startDateTime=${df}T00:00:00Z&endDateTime=${dt}T23:59:59Z&classificationName=music&size=50&sort=date,asc`,
+    data: d => d?._embedded?.events || [],
+    map: e => ({
+      id:'tm-'+e.id, source:'tm', artist: e.name, venue: e._embedded?.venues?.[0]?.name || 'TBA',
+      city: [e._embedded?.venues?.[0]?.city?.name, e._embedded?.venues?.[0]?.state?.stateCode].filter(Boolean).join(', '),
+      lat: parseFloat(e._embedded?.venues?.[0]?.location?.latitude), lon: parseFloat(e._embedded?.venues?.[0]?.location?.longitude),
       datetime: e.dates?.start?.dateTime || (e.dates?.start?.localDate+'T20:00:00'),
-      ticketUrl: e.url,
-      genre:  e.classifications?.[0]?.genre?.name || null
-    }));
-  } catch(e) { console.warn('TM error:', e); return []; }
-}
+      ticketUrl: e.url, genre: e.classifications?.[0]?.genre?.name || null
+    })
+  },
+  jb: {
+    url: (lat, lon, rad, df, dt, k) => `https://www.jambase.com/jb-api/v1/events?apikey=${k}&geoCoordsLat=${lat}&geoCoordsLon=${lon}&geoRadiusMiles=${rad}&eventDateFrom=${df}&eventDateTo=${dt}&perPage=50`,
+    data: d => d?.events || [],
+    map: e => ({
+      id:'jb-'+e.identifier, source:'jb', artist: (e.performer||[]).map(p=>p.name).join(', ') || 'Unknown', venue: e.location?.name || 'TBA',
+      city: [e.location?.address?.addressLocality, e.location?.address?.addressRegion].filter(Boolean).join(', '),
+      lat: parseFloat(e.location?.geo?.latitude), lon: parseFloat(e.location?.geo?.longitude),
+      datetime: e.startDate, ticketUrl: e.offers?.[0]?.url || e.url || null, genre: e.performer?.[0]?.genre?.[0] || null
+    })
+  },
+  eb: {
+    url: (lat, lon, rad, df, dt, k) => `https://www.eventbriteapi.com/v3/events/search/?token=${k}&location.latitude=${lat}&location.longitude=${lon}&location.within=${Math.round(rad*1.609)}km&start_date.range_start=${df}T00:00:00&start_date.range_end=${dt}T23:59:59&categories=103&expand=venue&page_size=50`,
+    data: d => d?.events || [],
+    map: e => ({
+      id:'eb-'+e.id, source:'eb', artist: e.name?.text || 'Event', venue: e.venue?.name || 'TBA',
+      city: [e.venue?.address?.city, e.venue?.address?.region].filter(Boolean).join(', '),
+      lat: parseFloat(e.venue?.latitude), lon: parseFloat(e.venue?.longitude),
+      datetime: e.start?.utc || e.start?.local, ticketUrl: e.url, genre: 'Music'
+    })
+  }
+};
 
-// ── API: Jambase ───────────────────────────────────────────────────
-async function fetchJB(lat, lon, radius, df, dt, key) {
-  const url = `https://www.jambase.com/jb-api/v1/events?apikey=${key}` +
-    `&geoCoordsLat=${lat}&geoCoordsLon=${lon}&geoRadiusMiles=${radius}` +
-    `&eventDateFrom=${df}&eventDateTo=${dt}&perPage=50`;
+async function fetchSource(src, lat, lon, rad, df, dt, key) {
+  const cfg = API_MAP[src];
   try {
-    const r = await fetch(url);
-    const d = await r.json();
-    if (d.errors || d.error) {
-      activateSourceUI('jb', 'Connection error: check API key', true);
+    const res = await fetch(cfg.url(lat, lon, rad, df, dt, key));
+    const d = await res.json();
+    if (d.fault || d.error || d.errors) {
+      activateSourceUI(src, `Connection error: check ${src==='eb'?'token':'key'}`, true);
       return [];
     }
-    return (d?.events || []).map(e => ({
-      id:'jb-'+e.identifier, source:'jb',
-      artist:   (e.performer||[]).map(p=>p.name).join(', ') || 'Unknown',
-      venue:    e.location?.name || 'TBA',
-      city:     [e.location?.address?.addressLocality, e.location?.address?.addressRegion].filter(Boolean).join(', '),
-      lat:      parseFloat(e.location?.geo?.latitude),
-      lon:      parseFloat(e.location?.geo?.longitude),
-      datetime: e.startDate,
-      ticketUrl: e.offers?.[0]?.url || e.url || null,
-      genre:    e.performer?.[0]?.genre?.[0] || null
-    }));
-  } catch(e) { console.warn('JB error:', e); return []; }
-}
-
-// ── API: Eventbrite ────────────────────────────────────────────────
-async function fetchEB(lat, lon, radius, df, dt, token) {
-  const km = Math.round(radius*1.609);
-  const url = `https://www.eventbriteapi.com/v3/events/search/?token=${token}` +
-    `&location.latitude=${lat}&location.longitude=${lon}&location.within=${km}km` +
-    `&start_date.range_start=${df}T00:00:00&start_date.range_end=${dt}T23:59:59` +
-    `&categories=103&expand=venue&page_size=50`;
-  try {
-    const r = await fetch(url);
-    const d = await r.json();
-    if (d.error || d.error_description) {
-      activateSourceUI('eb', 'Connection error: check private token', true);
-      return [];
-    }
-    return (d?.events || []).map(e => ({
-      id:'eb-'+e.id, source:'eb',
-      artist:   e.name?.text || 'Event',
-      venue:    e.venue?.name || 'TBA',
-      city:     [e.venue?.address?.city, e.venue?.address?.region].filter(Boolean).join(', '),
-      lat:      parseFloat(e.venue?.latitude),
-      lon:      parseFloat(e.venue?.longitude),
-      datetime: e.start?.utc || e.start?.local,
-      ticketUrl: e.url,
-      genre:    'Music'
-    }));
-  } catch(e) { console.warn('EB error:', e); return []; }
+    return cfg.data(d).map(cfg.map);
+  } catch(e) { console.warn(`${src.toUpperCase()} error:`, e); return []; }
 }
 
 // ── Spotify PKCE OAuth ─────────────────────────────────────────────
@@ -1579,20 +1465,17 @@ async function handleLastFmCallback() {
 }
 
 // ── Session Persistence ───────────────────────────────────────────
+// ── Session Persistence ───────────────────────────────────────────
+const SYNC_IDS = ['startCity','endCity','dateStart','dateEnd','radiusSlider','bufferSlider'];
+
 function saveSession() {
   const data = {
-    keys: state.keys,
+    keys: state.keys, filters: Array.from(state.filters),
     spToken: state.spToken, spTokenExpiry: state.spTokenExpiry,
     lfKey: state.lfKey, lfSecret: state.lfSecret, lfSession: state.lfSession, lfUser: state.lfUser,
     dzToken: state.dzToken, dzUser: state.dzUser, dzTokenExpiry: state.dzTokenExpiry,
-    startCity: document.getElementById('startCity').value,
-    endCity: document.getElementById('endCity').value,
-    dateStart: document.getElementById('dateStart').value,
-    dateEnd: document.getElementById('dateEnd').value,
-    radius: document.getElementById('radiusSlider').value,
-    buffer: document.getElementById('bufferSlider').value,
     stops: Array.from(document.querySelectorAll('.stop-input')).map(i => i.value),
-    filters: Array.from(state.filters)
+    vals: SYNC_IDS.reduce((acc, id) => ({ ...acc, [id]: document.getElementById(id).value }), {})
   };
   localStorage.setItem('roadshow_session', JSON.stringify(data));
 }
@@ -1602,26 +1485,23 @@ function loadSession() {
   if (!raw) return;
   try {
     const d = JSON.parse(raw);
-    state.keys = d.keys || {};
-    state.spToken = d.spToken; state.spTokenExpiry = d.spTokenExpiry;
-    state.lfKey = d.lfKey; state.lfSecret = d.lfSecret; state.lfSession = d.lfSession; state.lfUser = d.lfUser;
-    state.dzToken = d.dzToken; state.dzUser = d.dzUser; state.dzTokenExpiry = d.dzTokenExpiry;
-    state.filters = new Set(d.filters || ['tm','jb','eb']);
+    Object.assign(state, {
+      keys: d.keys || {}, filters: new Set(d.filters || ['tm','jb','eb']),
+      spToken: d.spToken, spTokenExpiry: d.spTokenExpiry,
+      lfKey: d.lfKey, lfSecret: d.lfSecret, lfSession: d.lfSession, lfUser: d.lfUser,
+      dzToken: d.dzToken, dzUser: d.dzUser, dzTokenExpiry: d.dzTokenExpiry
+    });
 
-    if (d.startCity) document.getElementById('startCity').value = d.startCity;
-    if (d.endCity)   document.getElementById('endCity').value = d.endCity;
-    if (d.dateStart) document.getElementById('dateStart').value = d.dateStart;
-    if (d.dateEnd)   document.getElementById('dateEnd').value = d.dateEnd;
-    if (d.radius) {
-      document.getElementById('radiusSlider').value = d.radius;
-      document.getElementById('radiusVal').textContent = d.radius + ' mi';
-    }
-    if (d.buffer) {
-      document.getElementById('bufferSlider').value = d.buffer;
-      document.getElementById('bufferVal').textContent = '±' + d.buffer + ' days';
-    }
+    if (d.vals) Object.entries(d.vals).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.value = val;
+        if (id === 'radiusSlider') document.getElementById('radiusVal').textContent = val + ' mi';
+        if (id === 'bufferSlider') document.getElementById('bufferVal').textContent = '±' + val + ' days';
+      }
+    });
 
-    if (d.stops && d.stops.length > 0) {
+    if (d.stops?.length) {
       const list = document.getElementById('stopsList');
       list.innerHTML = '';
       d.stops.forEach((s, i) => {
@@ -1635,13 +1515,10 @@ function loadSession() {
       });
     }
 
-    if (state.keys.tm) activateSourceUI('tm', 'Major shows · connected ✓');
-    if (state.keys.jb) activateSourceUI('jb', 'Indie venues · connected ✓');
-    if (state.keys.eb) activateSourceUI('eb', 'DIY shows · connected ✓');
+    ['tm','jb','eb'].forEach(s => { if (state.keys[s]) activateSourceUI(s, `${SRC_LABELS[s]} · connected ✓`); });
     if (state.spToken && Date.now() < state.spTokenExpiry) activateSourceUI('sp', 'Artist matching · connected ✓');
     if (state.lfSession) activateSourceUI('lf', `${esc(state.lfUser)} · connected ✓`);
     if (state.dzToken || state.keys.dz) activateSourceUI('dz', 'Connected ✓');
-
     updateTripDays();
   } catch(e) { console.warn('Load session failed:', e); }
 }
@@ -2378,12 +2255,9 @@ async function searchConcerts() {
 
   let concerts = [];
   try {
+    const active = Object.keys(state.keys).filter(s => ['tm','jb','eb'].includes(s));
     const batches = await Promise.all(
-      waypoints.flatMap(wp => [
-        state.keys.tm ? fetchTM(wp.lat,wp.lon,rad,df,dt,state.keys.tm) : Promise.resolve([]),
-        state.keys.jb ? fetchJB(wp.lat,wp.lon,rad,df,dt,state.keys.jb) : Promise.resolve([]),
-        state.keys.eb ? fetchEB(wp.lat,wp.lon,rad,df,dt,state.keys.eb) : Promise.resolve([])
-      ])
+      waypoints.flatMap(wp => active.map(s => fetchSource(s, wp.lat, wp.lon, rad, df, dt, state.keys[s])))
     );
     concerts = dedupe(batches.flat());
     console.log('✓ API results:', concerts.length, 'shows after dedup');
