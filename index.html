@@ -1205,7 +1205,7 @@ const API_MAP = {
     })
   },
   jb: {
-    url: (lat, lon, rad, df, dt, k) => `https://www.jambase.com/jb-api/v1/events?apikey=${k}&geoCoordsLat=${lat}&geoCoordsLon=${lon}&geoRadiusMiles=${rad}&eventDateFrom=${df}&eventDateTo=${dt}&perPage=50`,
+    url: (lat, lon, rad, df, dt, k) => `https://www.jambase.com/jb-api/v1/events?apikey=${k}&geoLatitude=${lat}&geoLongitude=${lon}&geoRadius=${rad}&geoUnit=mi&startDate=${df}&endDate=${dt}&perPage=50`,
     data: d => d?.events || [],
     map: e => ({
       id:'jb-'+e.identifier, source:'jb', artist: (e.performer||[]).map(p=>p.name).join(', ') || 'Unknown', venue: e.location?.name || 'TBA',
@@ -2011,6 +2011,11 @@ async function searchConcerts() {
     const activeSrc = ['tm','jb','eb'].filter(s => state.keys[s]);
     const batches = await Promise.all(waypoints.flatMap(wp => activeSrc.map(s => fetchSource(s, wp.lat, wp.lon, rad, df, dt, state.keys[s]))));
     concerts = dedupe(batches.flat());
+    // Strict client-side distance check to prevent API leakage
+    concerts = concerts.filter(c => {
+      if (!c.lat || !c.lon) return false;
+      return waypoints.some(wp => (hav(wp.lat, wp.lon, c.lat, c.lon) / 1.60934) <= (rad * 1.05)); // 5% margin for error
+    });
     if (likedArtists.size) concerts = concerts.filter(c => artistMatchesSet(c.artist || '', likedArtists));
     log.ok(`${concerts.length} matches found`);
   } catch(err) { log.err(err.message); btn.disabled=false; btn.textContent='⟶ Find Shows'; setLB(0); return; }
