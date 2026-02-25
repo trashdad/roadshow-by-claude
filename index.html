@@ -445,7 +445,7 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
           </div>
           <div class="api-btn-group">
             <button class="api-btn-sp-login" onclick="openSpLogin()">Login</button>
-            <button class="api-btn" onclick="openModal('sp','clientid')">Client ID</button>
+            <button class="api-btn" style="border-color:var(--green)" onclick="openModal('sp','clientid')">Dev Login</button>
           </div>
         </div>
         <div class="api-row dim" id="row-dz">
@@ -1019,8 +1019,8 @@ function openModal(svc, mode) {
 
   // ── Spotify: always show server OAuth button (if configured) + manual client ID entry ──
   if (svc === 'sp') {
-    if (mode === 'clientid' || !appConfig?.spotifyClientId) {
-      // CLIENT ID mode or no server config: show manual entry with detailed instructions
+    if (mode === 'clientid') {
+      // CLIENT ID mode: skip server OAuth, show manual entry with detailed dynamic instructions
       spOAuthSection.style.display = 'none';
       document.getElementById('mTitle').textContent = 'Spotify Client ID';
       document.getElementById('mDesc').innerHTML = getSpClientIdDesc();
