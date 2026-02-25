@@ -1229,6 +1229,7 @@ function saveKey() {
                     eb:'DIY shows · connected ✓', dz:'Favorite artists · connected ✓' };
     activateSourceUI(s, notes[s] || 'Connected ✓');
     clearCache();
+    saveSession();
   }
   closeModal();
 }
@@ -1414,6 +1415,7 @@ async function exchangeSpotifyCode(code, verifier, clientId) {
   state.spToken       = data.access_token;
   state.spTokenExpiry = Date.now() + data.expires_in * 1000;
   clearCache();
+  saveSession();
   activateSourceUI('sp', 'Artist matching · connected ✓');
   console.log(`✓ Spotify authorized (token valid for ${data.expires_in}s)`);
 }
@@ -1545,6 +1547,7 @@ async function completeLastFmAuth(token) {
   }
 
   clearCache();
+  saveSession();
   activateSourceUI('lf', `${esc(state.lfUser)} · connected ✓`);
   console.log(`✓ Last.fm authorized for ${state.lfUser}`);
 }
@@ -1565,6 +1568,74 @@ async function handleLastFmCallback() {
   }
 
   await completeLastFmAuth(token);
+}
+
+// ── Session Persistence ───────────────────────────────────────────
+function saveSession() {
+  const data = {
+    keys: state.keys,
+    spToken: state.spToken, spTokenExpiry: state.spTokenExpiry,
+    lfKey: state.lfKey, lfSecret: state.lfSecret, lfSession: state.lfSession, lfUser: state.lfUser,
+    dzToken: state.dzToken, dzUser: state.dzUser, dzTokenExpiry: state.dzTokenExpiry,
+    startCity: document.getElementById('startCity').value,
+    endCity: document.getElementById('endCity').value,
+    dateStart: document.getElementById('dateStart').value,
+    dateEnd: document.getElementById('dateEnd').value,
+    radius: document.getElementById('radiusSlider').value,
+    buffer: document.getElementById('bufferSlider').value,
+    stops: Array.from(document.querySelectorAll('.stop-input')).map(i => i.value),
+    filters: Array.from(state.filters)
+  };
+  localStorage.setItem('roadshow_session', JSON.stringify(data));
+}
+
+function loadSession() {
+  const raw = localStorage.getItem('roadshow_session');
+  if (!raw) return;
+  try {
+    const d = JSON.parse(raw);
+    state.keys = d.keys || {};
+    state.spToken = d.spToken; state.spTokenExpiry = d.spTokenExpiry;
+    state.lfKey = d.lfKey; state.lfSecret = d.lfSecret; state.lfSession = d.lfSession; state.lfUser = d.lfUser;
+    state.dzToken = d.dzToken; state.dzUser = d.dzUser; state.dzTokenExpiry = d.dzTokenExpiry;
+    state.filters = new Set(d.filters || ['tm','jb','eb']);
+
+    if (d.startCity) document.getElementById('startCity').value = d.startCity;
+    if (d.endCity)   document.getElementById('endCity').value = d.endCity;
+    if (d.dateStart) document.getElementById('dateStart').value = d.dateStart;
+    if (d.dateEnd)   document.getElementById('dateEnd').value = d.dateEnd;
+    if (d.radius) {
+      document.getElementById('radiusSlider').value = d.radius;
+      document.getElementById('radiusVal').textContent = d.radius + ' mi';
+    }
+    if (d.buffer) {
+      document.getElementById('bufferSlider').value = d.buffer;
+      document.getElementById('bufferVal').textContent = '±' + d.buffer + ' days';
+    }
+
+    if (d.stops && d.stops.length > 0) {
+      const list = document.getElementById('stopsList');
+      list.innerHTML = '';
+      d.stops.forEach((s, i) => {
+        const row = document.createElement('div');
+        row.className = 'stop-row';
+        row.innerHTML = `<input type="text" class="stop-input" value="${esc(s)}" placeholder="e.g. Memphis, TN"/>` +
+          (i === d.stops.length - 1 && i < MAX_EXTRA_STOPS
+            ? `<button class="stop-add-btn" onclick="addStopInput()" title="Add another stop">+</button>`
+            : `<button class="stop-rm-btn" onclick="removeStopInput(this)" title="Remove this stop">−</button>`);
+        list.appendChild(row);
+      });
+    }
+
+    if (state.keys.tm) activateSourceUI('tm', 'Major shows · connected ✓');
+    if (state.keys.jb) activateSourceUI('jb', 'Indie venues · connected ✓');
+    if (state.keys.eb) activateSourceUI('eb', 'DIY shows · connected ✓');
+    if (state.spToken && Date.now() < state.spTokenExpiry) activateSourceUI('sp', 'Artist matching · connected ✓');
+    if (state.lfSession) activateSourceUI('lf', `${esc(state.lfUser)} · connected ✓`);
+    if (state.dzToken || state.keys.dz) activateSourceUI('dz', 'Connected ✓');
+
+    updateTripDays();
+  } catch(e) { console.warn('Load session failed:', e); }
 }
 
 // ── Message listener for OAuth popup results ──────────────────────
@@ -2454,9 +2525,15 @@ if (_IS_POPUP_CB) {
   // so the modal buttons know whether pre-configured OAuth is available.
   setupPopupListener();
   loadConfig().then(() => {
+    loadSession();
     handleSpotifyCallback(); // handles any redirect-fallback code in URL
     handleLastFmCallback();  // handles any redirect-fallback token in URL
     handleDeezerCallback();  // handles any redirect-fallback code in URL
+
+    // Auto-save on form changes
+    document.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('input', saveSession);
+    });
   });
 }
 
