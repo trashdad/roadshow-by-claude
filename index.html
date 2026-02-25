@@ -572,14 +572,12 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
 
 <script>
 // ── Popup OAuth callback detection ─────────────────────────────────
-// When Spotify or Last.fm redirects back to our URL inside a popup window,
+// When Last.fm or Deezer redirects back to our URL inside a popup window,
 // we detect it immediately, cover the app UI with an overlay so it doesn't
 // flash, then relay the auth result to the opener and close.
 const _IS_POPUP_CB = !!(
   window.opener && window.opener !== window &&
-  (new URLSearchParams(window.location.search).has('code') ||
-   new URLSearchParams(window.location.search).has('token') ||
-   new URLSearchParams(window.location.search).has('error') ||
+  (new URLSearchParams(window.location.search).has('token') ||
    new URLSearchParams(window.location.search).has('error_reason'))
 );
 if (_IS_POPUP_CB) {
@@ -947,9 +945,14 @@ function hav(la1,lo1,la2,lo2) {
 // ── Spotify tile LOGIN button ────────────────────────────────────
 function openSpLogin() {
   if (appConfig?.spotifyClientId) {
-    openSpotifyPopup(appConfig.spotifyClientId);
+    authorizeSpotify(appConfig.spotifyClientId);
   } else {
-    openModal('sp');
+    const note = document.getElementById('note-sp');
+    if (note) {
+      note.textContent = 'Error: Spotify Client ID not configured on server.';
+      note.style.color = 'var(--accent2)';
+    }
+    console.error('Spotify login failed: appConfig.spotifyClientId is missing.');
   }
 }
 
@@ -1105,12 +1108,12 @@ function openModal(svc, mode) {
 function closeModal() { document.getElementById('modalEl').classList.remove('open'); state.modal = null; }
 function closeModalOutside(e) { if (e.target === document.getElementById('modalEl')) closeModal(); }
 
-// Called by the pre-configured OAuth button — opens service login in a popup
+// Called by the pre-configured OAuth button — opens service login
 function startModalOAuth() {
   const s = state.modal;
   if (s === 'sp') {
-    openSpotifyPopup(appConfig.spotifyClientId);
-    showModalLoading('Waiting for Spotify...');
+    authorizeSpotify(appConfig.spotifyClientId);
+    showModalLoading('Redirecting to Spotify...');
   } else if (s === 'lf') {
     openLastFmPopup(appConfig.lastfmApiKey);
     showModalLoading('Waiting for Last.fm...');
@@ -1122,11 +1125,11 @@ function startModalOAuth() {
 
 function saveKey() {
   const s = state.modal;
-  // Spotify — opens Spotify login popup (manual Client ID entry fallback)
+  // Spotify — redirects to Spotify login (manual Client ID entry fallback)
   if (s === 'sp') {
     const clientId = document.getElementById('mInput').value.trim();
     closeModal();
-    if (clientId) openSpotifyPopup(clientId);
+    if (clientId) authorizeSpotify(clientId);
     return;
   }
   // Last.fm — opens Last.fm login popup (manual API Key + Shared Secret fallback)
@@ -1282,14 +1285,14 @@ async function generateCodeChallenge(verifier) {
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
 
-// ── Open Spotify login popup (PKCE) ───────────────────────────────
-async function openSpotifyPopup(clientId) {
+// ── Spotify PKCE OAuth (Direct Redirect) ───────────────────────────
+async function authorizeSpotify(clientId) {
   const verifier  = generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
   const oauthState = generateOAuthState('sp');
 
-  sessionStorage.setItem('sp_popup_verifier', verifier);
-  sessionStorage.setItem('sp_popup_client_id', clientId);
+  sessionStorage.setItem('sp_verifier', verifier);
+  sessionStorage.setItem('sp_client_id', clientId);
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -1300,28 +1303,7 @@ async function openSpotifyPopup(clientId) {
     code_challenge: challenge,
     state: oauthState
   });
-  const url = 'https://accounts.spotify.com/authorize?' + params;
-  const popup = window.open(url, 'SpotifyLogin', 'width=460,height=640,scrollbars=yes,resizable=yes');
-  if (!popup) {
-    sessionStorage.setItem('sp_verifier', verifier);
-    sessionStorage.setItem('sp_client_id', clientId);
-    window.location.href = url;
-  } else {
-    const pollTimer = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(pollTimer);
-        const loadingSec = document.getElementById('mLoadingSection');
-        if (loadingSec && loadingSec.style.display !== 'none') {
-          loadingSec.style.display = 'none';
-          if (appConfig?.spotifyClientId) {
-            document.getElementById('mSpOAuthSection').style.display = '';
-          }
-          document.getElementById('mManualSection').style.display = '';
-          document.getElementById('mActions').style.display = 'flex';
-        }
-      }
-    }, 500);
-  }
+  window.location.href = 'https://accounts.spotify.com/authorize?' + params;
 }
 
 // ── Exchange Spotify auth code for access token (PKCE) ────────────
@@ -1359,7 +1341,7 @@ async function exchangeSpotifyCode(code, verifier, clientId) {
   console.log(`✓ Spotify authorized (token valid for ${data.expires_in}s)`);
 }
 
-// ── Handle Spotify callback (popup OR redirect fallback) ───────────
+// ── Handle Spotify callback (Redirect fallback) ────────────────────
 async function handleSpotifyCallback() {
   const params = new URLSearchParams(window.location.search);
   const code  = params.get('code');
@@ -1372,30 +1354,10 @@ async function handleSpotifyCallback() {
   if (code || error) window.history.replaceState({}, '', window.location.pathname);
 
   if (error) {
-    if (_IS_POPUP_CB && window.opener) {
-      window.opener.postMessage({ type: 'spotify_error', error }, window.location.origin);
-      setTimeout(() => window.close(), 400);
-    } else {
-      console.warn('Spotify OAuth cancelled or denied:', error);
-    }
+    console.warn('Spotify OAuth cancelled or denied:', error);
     return;
   }
   if (!code) return;
-
-  if (_IS_POPUP_CB && window.opener) {
-    window.opener.postMessage(
-      { type: 'spotify_code', code, state: receivedState },
-      window.location.origin
-    );
-    document.body.style.cssText =
-      'margin:0;height:100vh;background:#0a0a0a;display:flex;align-items:center;justify-content:center';
-    document.body.innerHTML =
-      '<div style="text-align:center;font-family:\'DM Mono\',monospace;color:#4ade80">' +
-      '<div style="font-size:1.8rem;margin-bottom:10px">&#10003;</div>' +
-      '<div style="font-size:.6rem;letter-spacing:.14em;opacity:.55">AUTHORIZED &middot; CLOSING</div></div>';
-    setTimeout(() => window.close(), 700);
-    return;
-  }
 
   // Non-popup redirect fallback: validate state locally
   if (receivedState && !validateOAuthState('sp', receivedState)) {
@@ -1536,33 +1498,13 @@ async function completeLastFmAuth(token) {
 
 // ── Message listener for OAuth popup results ──────────────────────
 // Set up once on the main (non-popup) window. The popup calls postMessage
-// with { type: 'spotify_code'|'lastfm_token', ... } before it closes.
+// with { type: 'lastfm_token'|'deezer_code', ... } before it closes.
 function setupPopupListener() {
   window.addEventListener('message', async function(e) {
     if (e.origin !== window.location.origin) return;
     const d = e.data;
 
-    if (d.type === 'spotify_code') {
-      // Validate CSRF state
-      if (d.state && !validateOAuthState('sp', d.state)) {
-        console.error('Spotify popup: CSRF state mismatch.');
-        showModalError('Spotify authorization failed: security state mismatch.');
-        return;
-      }
-      if (document.getElementById('modalEl').classList.contains('open')) {
-        showModalLoading('Exchanging Spotify token...');
-      }
-      const verifier = sessionStorage.getItem('sp_popup_verifier');
-      const clientId = sessionStorage.getItem('sp_popup_client_id');
-      sessionStorage.removeItem('sp_popup_verifier');
-      sessionStorage.removeItem('sp_popup_client_id');
-      if (verifier && clientId) {
-        await exchangeSpotifyCode(d.code, verifier, clientId);
-        if (state.spToken && document.getElementById('modalEl').classList.contains('open')) {
-          showModalSuccess('Spotify connected!');
-        }
-      }
-    } else if (d.type === 'lastfm_token') {
+    if (d.type === 'lastfm_token') {
       // Validate CSRF state for Last.fm
       if (d.state && !validateOAuthState('lf', d.state)) {
         console.error('Last.fm popup: CSRF state mismatch.');
@@ -1590,9 +1532,6 @@ function setupPopupListener() {
       if (state.dzToken && document.getElementById('modalEl').classList.contains('open')) {
         showModalSuccess('Deezer connected!');
       }
-    } else if (d.type === 'spotify_error') {
-      console.warn('Spotify OAuth denied:', d.error);
-      showModalError('Spotify authorization denied: ' + (d.error || 'unknown error'));
     } else if (d.type === 'deezer_error') {
       console.warn('Deezer OAuth denied:', d.error);
       showModalError('Deezer authorization denied: ' + (d.error || 'unknown error'));
