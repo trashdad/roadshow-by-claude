@@ -364,9 +364,9 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
     <div class="ss">
       <div class="sl">Your Route</div>
       <div class="ig"><div class="il"><span class="dot ds"></span> Starting City</div>
-        <input type="text" id="startCity" placeholder="e.g. Nashville, TN"/></div>
+        <input type="text" id="startCity" value="norfolk, va" placeholder="e.g. Nashville, TN"/></div>
       <div class="ig"><div class="il"><span class="dot de"></span> Destination</div>
-        <input type="text" id="endCity" placeholder="e.g. New Orleans, LA"/></div>
+        <input type="text" id="endCity" value="portland, me" placeholder="e.g. New Orleans, LA"/></div>
       <div class="ig" id="stopsSection">
         <div class="il"><span class="dot dm"></span> Stops</div>
         <div id="stopsList">
@@ -874,11 +874,8 @@ document.getElementById('radiusSlider').oninput = e =>
 document.getElementById('bufferSlider').oninput = e =>
   document.getElementById('bufferVal').textContent = '±' + e.target.value + ' days';
 
-const today = new Date();
-const d1 = new Date(today); d1.setDate(today.getDate()+14);
-const d2 = new Date(today); d2.setDate(today.getDate()+21);
-document.getElementById('dateStart').value = fd(d1);
-document.getElementById('dateEnd').value   = fd(d2);
+document.getElementById('dateStart').value = '2026-05-10';
+document.getElementById('dateEnd').value   = '2026-05-30';
 updateTripDays();
 
 document.getElementById('dateStart').addEventListener('change', updateTripDays);
