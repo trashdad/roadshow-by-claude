@@ -512,7 +512,12 @@ input[type=range]::-moz-range-thumb:hover{box-shadow:0 0 14px rgba(232,197,71,.5
     <p id="mDesc"></p>
     <!-- Error display area -->
     <div id="mErrorArea" style="display:none"></div>
-    <!-- OAuth section: shown when site has pre-configured credentials -->
+    <!-- Spotify server-OAuth section: always shown for Spotify when server has client ID -->
+    <div id="mSpOAuthSection" style="display:none;margin-bottom:10px">
+      <button class="b-oauth sp-btn" id="mSpOAuthBtn" onclick="startModalOAuth()">Login</button>
+      <p style="font-size:.5rem;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;text-align:center;margin-top:8px;margin-bottom:0">— or enter your own client id below —</p>
+    </div>
+    <!-- OAuth section: shown when site has pre-configured credentials (Last.fm / legacy) -->
     <div id="mOAuthSection" style="display:none;margin-bottom:4px">
       <button class="b-oauth" id="mOAuthBtn" onclick="startModalOAuth()">Login</button>
     </div>
@@ -756,6 +761,7 @@ function validateOAuthState(service, receivedState) {
 
 // ── Modal state management ─────────────────────────────────────────
 function showModalLoading(text) {
+  document.getElementById('mSpOAuthSection').style.display = 'none';
   document.getElementById('mOAuthSection').style.display = 'none';
   document.getElementById('mDzOAuthSection').style.display = 'none';
   document.getElementById('mManualSection').style.display = 'none';
@@ -943,6 +949,7 @@ function openModal(svc) {
   document.getElementById('mTitle').textContent = c.title;
   document.getElementById('mDesc').innerHTML = c.desc;
 
+  const spOAuthSection = document.getElementById('mSpOAuthSection');
   const oauthSection  = document.getElementById('mOAuthSection');
   const manualSection = document.getElementById('mManualSection');
   const saveBtn       = document.getElementById('mSaveBtn');
@@ -954,14 +961,31 @@ function openModal(svc) {
   const dzOAuthSec    = document.getElementById('mDzOAuthSection');
 
   // Reset all sections
-  loadingSec.style.display = 'none';
-  successSec.style.display = 'none';
-  dzTabs.style.display     = 'none';
-  dzOAuthSec.style.display = 'none';
-  actions.style.display    = 'flex';
+  loadingSec.style.display   = 'none';
+  successSec.style.display   = 'none';
+  spOAuthSection.style.display = 'none';
+  dzTabs.style.display       = 'none';
+  dzOAuthSec.style.display   = 'none';
+  actions.style.display      = 'flex';
 
+  // ── Spotify: always show server OAuth button (if configured) + manual client ID entry ──
+  if (svc === 'sp') {
+    if (useSpOAuth) {
+      spOAuthSection.style.display = '';
+      document.getElementById('mSpOAuthBtn').innerHTML = svgSpotifyIcon(16) + ' ' +
+        (state.spToken ? 'Reconnect Spotify' : 'Login with Spotify');
+    }
+    oauthSection.style.display  = 'none';
+    manualSection.style.display = '';
+    saveBtn.style.display       = '';
+    document.getElementById('mInput').placeholder = c.placeholder || '';
+    document.getElementById('mInput').value = state.keys.sp || '';
+    document.getElementById('mInput2Wrap').style.display = 'none';
+    saveBtn.textContent = 'Login with Spotify';
+    setTimeout(() => document.getElementById('mInput').focus(), 80);
+  }
   // ── Deezer: special handling with tabs ──
-  if (svc === 'dz') {
+  else if (svc === 'dz') {
     oauthSection.style.display = 'none';
 
     if (useDzOAuth) {
@@ -979,20 +1003,14 @@ function openModal(svc) {
       document.getElementById('mInput2Wrap').style.display = 'none';
     }
   }
-  // ── Spotify / Last.fm with pre-configured OAuth ──
-  else if (useOAuth) {
+  // ── Last.fm with pre-configured OAuth ──
+  else if (useLfOAuth) {
     oauthSection.style.display  = '';
     manualSection.style.display = 'none';
     saveBtn.style.display       = 'none';
-    if (useSpOAuth) {
-      oauthBtn.innerHTML = svgSpotifyIcon(16) + ' ' +
-        (state.spToken ? 'Reconnect Spotify' : 'Login with Spotify');
-      oauthBtn.className = 'b-oauth sp-btn';
-    } else {
-      oauthBtn.innerHTML = svgLastfmIcon(16) + ' ' +
-        (state.lfSession ? 'Reconnect Last.fm' : 'Login with Last.fm');
-      oauthBtn.className = 'b-oauth lf-btn';
-    }
+    oauthBtn.innerHTML = svgLastfmIcon(16) + ' ' +
+      (state.lfSession ? 'Reconnect Last.fm' : 'Login with Last.fm');
+    oauthBtn.className = 'b-oauth lf-btn';
   }
   // ── Manual key entry (fallback) ──
   else {
@@ -1009,7 +1027,6 @@ function openModal(svc) {
     document.getElementById('mInput2').value = svc === 'lf' ? (state.lfSecret || '') : '';
     saveBtn.textContent =
       svc === 'lf' ? 'Login with Last.fm' :
-      svc === 'sp' ? 'Login with Spotify' :
       'Save';
     setTimeout(() => document.getElementById('mInput').focus(), 80);
   }
@@ -1227,7 +1244,10 @@ async function openSpotifyPopup(clientId) {
         const loadingSec = document.getElementById('mLoadingSection');
         if (loadingSec && loadingSec.style.display !== 'none') {
           loadingSec.style.display = 'none';
-          document.getElementById('mOAuthSection').style.display = '';
+          if (appConfig?.spotifyClientId) {
+            document.getElementById('mSpOAuthSection').style.display = '';
+          }
+          document.getElementById('mManualSection').style.display = '';
           document.getElementById('mActions').style.display = 'flex';
         }
       }
