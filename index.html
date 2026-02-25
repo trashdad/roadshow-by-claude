@@ -1704,6 +1704,7 @@ function loadSession() {
             ? `<button class="stop-add-btn" onclick="addStopInput()" title="Add another stop">+</button>`
             : `<button class="stop-rm-btn" onclick="removeStopInput(this)" title="Remove this stop">−</button>`);
         list.appendChild(row);
+        row.querySelector('input').addEventListener('input', saveSession);
       });
     }
 
@@ -2326,7 +2327,7 @@ async function searchConcerts() {
 
   setLB(25); showEmpty('Calculating route...');
   const route = await getRoute(geo);
-  let waypoints = geo;
+  let waypoints = [...geo]; // Start with the cities themselves
 
   if (route) {
     console.log('✓ Route:', Math.round(route.dist/1609), 'miles');
@@ -2334,8 +2335,9 @@ async function searchConcerts() {
       style:{color:'#e8c547',weight:3,opacity:.65,dashArray:'6,4'}
     }).addTo(map);
     const radM = rad * 1609;
-    const nWp = Math.min(8, Math.max(2, Math.ceil(route.dist / (radM * 1.75))));
-    waypoints = sampleRoute(route.geo, nWp);
+    const nWp = Math.min(12, Math.max(2, Math.ceil(route.dist / (radM * 1.5))));
+    const samples = sampleRoute(route.geo, nWp);
+    waypoints = [...geo, ...samples]; // Combine cities + route samples
     document.getElementById('stDist').textContent = Math.round(route.dist/1609).toLocaleString()+' mi';
     map.fitBounds(state.route.getBounds(), {padding:[50,50]});
   } else {
@@ -2345,12 +2347,14 @@ async function searchConcerts() {
     document.getElementById('stDist').textContent = 'N/A';
   }
 
-  // City markers
-  geo.forEach((p,i) => {
-    const col = i===0?'#4ade80':i===geo.length-1?'#ff5c38':'#e8c547';
-    const r = i===0||i===geo.length-1 ? 9 : 7;
+  // City markers - use the geocoded results correctly
+  geo.forEach((p) => {
+    const isFirst = p === geo[0];
+    const isLast = p === geo[geo.length-1];
+    const col = isFirst ? '#4ade80' : isLast ? '#ff5c38' : '#e8c547';
+    const r = (isFirst || isLast) ? 9 : 7;
     const m = L.circleMarker([p.lat,p.lon],{radius:r,fillColor:col,color:'#0a0a0a',weight:2,fillOpacity:1})
-     .addTo(map).bindPopup(`<b style="font-family:monospace">${esc(names[i])}</b>`);
+     .addTo(map).bindPopup(`<b style="font-family:monospace">${esc(p.name)}</b>`);
     state.cityMarkers.push(m);
   });
 
