@@ -1270,7 +1270,7 @@ async function authorizeSpotify(clientId) {
     client_id: clientId,
     response_type: 'code',
     redirect_uri: spRedirectUri(),
-    scope: 'user-top-read',
+    scope: 'user-top-read user-follow-read',
     code_challenge_method: 'S256',
     code_challenge: challenge,
     state: oauthState
@@ -1600,12 +1600,18 @@ async function fetchLikedArtists(svc) {
     if (isSp) {
       if (!state.spToken) throw new Error('Not connected');
       if (Date.now() >= state.spTokenExpiry) { state.spToken = null; throw new Error('Session expired'); }
-      const res = await fetch('https://api.spotify.com/v1/me/top/artists?limit=50&time_range=medium_term', {
-        headers: { 'Authorization': 'Bearer ' + state.spToken }
-      });
-      if (!res.ok) throw new Error(`Spotify error ${res.status}`);
-      const d = await res.json();
-      return (d.items || []).map(a => a.name);
+      const headers = { 'Authorization': 'Bearer ' + state.spToken };
+      const [topRes, followRes] = await Promise.all([
+        fetch('https://api.spotify.com/v1/me/top/artists?limit=50&time_range=medium_term', { headers }),
+        fetch('https://api.spotify.com/v1/me/following?type=artist&limit=50', { headers })
+      ]);
+      if (!topRes.ok || !followRes.ok) throw new Error('Spotify API error');
+      const [topData, followData] = await Promise.all([topRes.json(), followRes.json()]);
+      const artists = new Set([
+        ...(topData.items || []).map(a => a.name),
+        ...(followData.artists?.items || []).map(a => a.name)
+      ]);
+      return Array.from(artists);
     }
     
     if (isLf) {
